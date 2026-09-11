@@ -1,0 +1,183 @@
+@import "tailwindcss";
+
+
+:root {
+  --gold: #c9a84c;
+  --gold-light: #f0d06e;
+  --gold-dark: #a07c2a;
+  --cream: #faf8f3;
+  --charcoal: #1a1a2e;
+  --charcoal-light: #2d2d44;
+  --text-dark: #1a1a2e;
+  --text-muted: #6b7280;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--cream);
+  color: var(--text-dark);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Smooth transitions on interactive elements */
+a, button, input, select, textarea {
+  transition: all 0.2s ease;
+}
+
+/* Gold gradient utility */
+.gold-gradient {
+  background: linear-gradient(135deg, #c9a84c 0%, #f0d06e 50%, #c9a84c 100%);
+}
+
+.gold-text {
+  background: linear-gradient(135deg, #c9a84c 0%, #f0d06e 60%, #a07c2a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Card hover lift effect */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(201,168,76,0.18);
+}
+
+/* Service card selected state */
+.service-card.selected {
+  border-color: #c9a84c;
+  background: linear-gradient(135deg, #fdf9f0 0%, #fff8e7 100%);
+  box-shadow: 0 0 0 3px rgba(201,168,76,0.25), 0 8px 24px rgba(201,168,76,0.18);
+}
+
+/* Primary CTA button */
+.btn-primary {
+  background: linear-gradient(135deg, #c9a84c 0%, #f0d06e 50%, #c9a84c 100%);
+  color: #1a1a2e;
+  font-weight: 700;
+  border: none;
+  border-radius: 12px;
+  padding: 16px 32px;
+  font-size: 16px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 20px rgba(201,168,76,0.4);
+  transition: all 0.25s ease;
+  background-size: 200% 200%;
+}
+.btn-primary:hover {
+  box-shadow: 0 8px 30px rgba(201,168,76,0.55);
+  transform: translateY(-1px);
+}
+.btn-primary:active {
+  transform: translateY(0);
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Secondary button */
+.btn-secondary {
+  background: transparent;
+  color: #c9a84c;
+  font-weight: 600;
+  border: 2px solid #c9a84c;
+  border-radius: 12px;
+  padding: 14px 28px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-secondary:hover {
+  background: rgba(201,168,76,0.08);
+}
+
+/* Dark hero background */
+.hero-bg {
+  background: linear-gradient(160deg, #1a1a2e 0%, #2d2d44 60%, #1a1a2e 100%);
+}
+
+/* Shimmer animation for badges */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.shimmer-badge {
+  background: linear-gradient(90deg, #c9a84c 25%, #f0d06e 50%, #c9a84c 75%);
+  background-size: 200% auto;
+  animation: shimmer 3s linear infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Pulse animation for CTA */
+@keyframes pulse-gold {
+  0%, 100% { box-shadow: 0 4px 20px rgba(201,168,76,0.4); }
+  50% { box-shadow: 0 4px 32px rgba(201,168,76,0.7); }
+}
+.btn-pulse {
+  animation: pulse-gold 2s ease-in-out infinite;
+}
+
+/* Form input styling */
+.form-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 15px;
+  background: white;
+  color: #1a1a2e;
+  outline: none;
+  font-family: 'Inter', sans-serif;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.form-input::placeholder { color: #9ca3af; }
+.form-input:focus {
+  border-color: #c9a84c !important;
+  box-shadow: 0 0 0 3px rgba(201,168,76,0.15);
+}
+.form-input.error {
+  border-color: #ef4444 !important;
+}
+
+/* Status badge colors */
+.status-New { background: #dbeafe; color: #1e40af; }
+.status-Contacted { background: #fef3c7; color: #92400e; }
+.status-Booking-Requested { background: #ffedd5; color: #9a3412; }
+.status-Booked { background: #d1fae5; color: #065f46; }
+.status-Completed { background: #e0e7ff; color: #3730a3; }
+.status-Lost { background: #fee2e2; color: #991b1b; }
+.status-Follow-up-Sent { background: #dcfce7; color: #166534; }
+
+/* Dashboard table */
+.table-row {
+  transition: background 0.15s ease;
+}
+.table-row:hover {
+  background: #faf8f3;
+}
+
+/* Floating decorative elements */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+.float-anim {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #c9a84c; border-radius: 3px; }
+
