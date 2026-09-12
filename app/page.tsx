@@ -168,14 +168,14 @@ export default function Home() {
         {/* Top bar */}
         <div style={{ background: "rgba(201,168,76,0.08)", borderBottom: "1px solid rgba(201,168,76,0.15)" }}
           className="px-4 py-2.5 sm:px-6 sm:py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, #c9a84c, #f0d06e)" }}>
-              <ServiceIcon icon="scissors" size={13} color="#1a1a2e" />
+          <div className="flex items-center gap-2.5">
+            <img src="/logo.png" alt="Swasthik Salon & Boutique Logo"
+              className="w-9 h-9 rounded-full object-cover border border-amber-400/40 shadow-sm flex-shrink-0" />
+            <div>
+              <span className="text-xs sm:text-sm font-bold tracking-wider text-amber-300 block leading-tight">
+                SWASTHIK SALON &amp; BOUTIQUE
+              </span>
             </div>
-            <span className="text-xs font-bold tracking-widest text-amber-300">
-              SWASTHIK SALON &amp; BOUTIQUE
-            </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
@@ -195,10 +195,14 @@ export default function Home() {
 
           {/* LEFT: Offer Hero */}
           <div className="lg:flex-1 flex flex-col justify-center px-4 py-6 sm:px-8 lg:px-12 lg:py-16">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-3 text-xs font-semibold w-fit"
-              style={{ background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.3)", color: "#f0d06e" }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f0d06e", display: "inline-block" }}/>
-              FIRST VISIT SPECIAL
+            <div className="flex items-center gap-3 mb-3">
+              <img src="/logo.png" alt="Swasthik Salon Logo"
+                className="w-12 h-12 rounded-full object-cover border-2 border-amber-400/50 shadow-md flex-shrink-0" />
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold"
+                style={{ background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.3)", color: "#f0d06e" }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f0d06e", display: "inline-block" }}/>
+                FIRST VISIT SPECIAL
+              </div>
             </div>
 
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black mb-2 text-white leading-tight">
@@ -210,11 +214,11 @@ export default function Home() {
             </h1>
 
             <p className="text-xs sm:text-sm text-gray-400 mb-4 max-w-md">
-              Select your service below to claim your ₹200 discount. No upfront payment required.
+              Select your service below to claim your ₹200 discount. No payment required.
             </p>
 
             <div className="hidden lg:flex items-center gap-6 mt-4">
-              {[{ v: "2,400+", l: "Happy Clients" }, { v: "4.9★", l: "Top Rated" }, { v: "8+ Yrs", l: "Experience" }].map(s => (
+              {[{ v: "1,400+", l: "Happy Clients" }, { v: "4.9★", l: "Top Rated" }, { v: "10+ Yrs", l: "Experience" }].map(s => (
                 <div key={s.l}>
                   <div className="text-base font-black text-amber-300">{s.v}</div>
                   <div className="text-[11px] text-gray-500">{s.l}</div>
@@ -327,11 +331,15 @@ export default function Home() {
             className="text-xs px-2.5 py-1 rounded-lg font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 cursor-pointer">
             &larr; Change Service
           </button>
-          <div className="text-right">
-            <span className="text-[10px] font-bold text-amber-300 uppercase tracking-widest block">
-              SWASTHIK SALON
-            </span>
-            <span className="text-xs font-bold text-white">Claim &#8377;200 OFF</span>
+          <div className="flex items-center gap-2">
+            <img src="/logo.png" alt="Swasthik Logo"
+              className="w-7 h-7 rounded-full object-cover border border-amber-400/40 shadow-sm" />
+            <div className="text-right">
+              <span className="text-[10px] font-bold text-amber-300 uppercase tracking-widest block leading-tight">
+                SWASTHIK SALON
+              </span>
+              <span className="text-xs font-bold text-white leading-tight">Claim &#8377;200 OFF</span>
+            </div>
           </div>
         </div>
 
@@ -394,9 +402,9 @@ export default function Home() {
             {errors.phone && <p className="text-[10px] text-red-400 mt-0.5">{errors.phone}</p>}
           </div>
 
-          {/* Date & Time Side by Side */}
-          <div className="grid grid-cols-2 gap-2.5">
-            <div>
+          {/* Date & Time Grid — Non-overlapping layout */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 min-w-0">
+            <div className="min-w-0">
               <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">
                 Preferred Date *
               </label>
@@ -406,13 +414,13 @@ export default function Home() {
                 min={todayIso()}
                 value={formData.preferredDate}
                 onChange={(e) => { setFormData({ ...formData, preferredDate: e.target.value }); setErrors({ ...errors, preferredDate: "" }); }}
-                className={`form-input py-2 px-2.5 text-xs rounded-xl ${errors.preferredDate ? "error" : ""}`}
-                style={{ background: "rgba(255,255,255,0.06)", borderColor: errors.preferredDate ? "#ef4444" : "rgba(255,255,255,0.1)", color: "#ffffff" }}
+                className={`form-input py-2 px-2.5 text-xs rounded-xl w-full min-w-0 block ${errors.preferredDate ? "error" : ""}`}
+                style={{ background: "rgba(255,255,255,0.06)", borderColor: errors.preferredDate ? "#ef4444" : "rgba(255,255,255,0.1)", color: "#ffffff", boxSizing: "border-box" }}
               />
               {errors.preferredDate && <p className="text-[10px] text-red-400 mt-0.5">{errors.preferredDate}</p>}
             </div>
 
-            <div>
+            <div className="min-w-0">
               <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">
                 Preferred Time *
               </label>
@@ -420,8 +428,8 @@ export default function Home() {
                 id="input-time"
                 value={formData.preferredTime}
                 onChange={(e) => { setFormData({ ...formData, preferredTime: e.target.value }); setErrors({ ...errors, preferredTime: "" }); }}
-                className={`form-input py-2 px-2.5 text-xs rounded-xl ${errors.preferredTime ? "error" : ""}`}
-                style={{ background: "rgba(255,255,255,0.06)", borderColor: errors.preferredTime ? "#ef4444" : "rgba(255,255,255,0.1)", color: "#ffffff" }}>
+                className={`form-input py-2 px-2.5 text-xs rounded-xl w-full min-w-0 block ${errors.preferredTime ? "error" : ""}`}
+                style={{ background: "rgba(255,255,255,0.06)", borderColor: errors.preferredTime ? "#ef4444" : "rgba(255,255,255,0.1)", color: "#ffffff", boxSizing: "border-box" }}>
                 {TIME_SLOTS.map((t) => (
                   <option key={t} value={t} style={{ background: "#1a1a2e", color: "#ffffff" }}>{t}</option>
                 ))}
@@ -462,10 +470,14 @@ export default function Home() {
         <div className="w-full max-w-sm">
           
           {/* Instant Confirmation Header */}
-          <div className="text-center mb-5">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-3"
-              style={{ background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 0 30px rgba(16,185,129,0.3)" }}>
-              <CheckIcon size={30} />
+          <div className="text-center mb-4">
+            <div className="flex items-center justify-center gap-3 mb-3">
+              <img src="/logo.png" alt="Swasthik Logo"
+                className="w-14 h-14 rounded-full object-cover border-2 border-amber-400/50 shadow-md" />
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full"
+                style={{ background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 0 25px rgba(16,185,129,0.35)" }}>
+                <CheckIcon size={24} />
+              </div>
             </div>
             <h1 className="text-2xl font-black text-white mb-1">
               Appointment Confirmed!

@@ -299,10 +299,11 @@ export default function InstagramDemo() {
                 <div className="flex items-center gap-3">
                   <div className="text-gray-400 text-lg cursor-pointer">&#8592;</div>
                   <div className="relative">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm text-gray-900 overflow-hidden"
-                      style={{ background: "linear-gradient(135deg, #c9a84c, #f0d06e)" }}>
-                      ✂️
-                    </div>
+                    <img
+                      src="/logo.png"
+                      alt="Swasthik Salon &amp; Boutique"
+                      className="w-10 h-10 rounded-full object-cover border border-[#c9a84c]/40"
+                    />
                     <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-black" />
                   </div>
                   <div>
@@ -328,10 +329,11 @@ export default function InstagramDemo() {
                 
                 {/* Conversation intro badge */}
                 <div className="text-center py-2">
-                  <div className="w-14 h-14 rounded-full mx-auto mb-2 flex items-center justify-center text-xl"
-                    style={{ background: "linear-gradient(135deg, #c9a84c, #f0d06e)" }}>
-                    ✂️
-                  </div>
+                  <img
+                    src="/logo.png"
+                    alt="Swasthik Salon &amp; Boutique"
+                    className="w-14 h-14 rounded-full mx-auto mb-2 object-cover border border-[#c9a84c]/50 shadow-md"
+                  />
                   <div className="text-white text-xs font-bold">Swasthik Salon &amp; Boutique</div>
                   <div className="text-[11px] text-gray-500">Instagram &bull; 2.4k followers</div>
                   <div className="text-[10px] text-gray-600 mt-1">Automated DM Assistant Active</div>

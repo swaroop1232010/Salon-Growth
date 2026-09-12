@@ -474,13 +474,11 @@ export default function Dashboard() {
       {/* Top Navigation Header */}
       <header className="hero-bg px-5 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-base"
-            style={{ background: "linear-gradient(135deg, #c9a84c, #f0d06e)" }}>
-            &#9986;
-          </div>
+          <img src="/logo.png" alt="Swasthik Salon Logo"
+            className="w-10 h-10 rounded-xl object-cover border border-amber-400/40 shadow-sm flex-shrink-0" />
           <div>
             <p className="text-xs font-bold tracking-widest" style={{ color: "#c9a84c" }}>SWASTHIK SALON &amp; BOUTIQUE</p>
-            <h1 className="text-white font-bold text-sm">Salon Growth &amp; Revenue Dashboard</h1>
+            <h1 className="text-white font-bold text-sm">Dashboard</h1>
           </div>
         </div>
         <div className="flex items-center gap-2">
