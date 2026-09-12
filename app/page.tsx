@@ -3,17 +3,21 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { SERVICES, DISCOUNT, OFFER_TEXT } from "./lib/services";
-import { generateLeadId, saveLead } from "./lib/storage";
+import { insertLead } from "./lib/supabase";
 import { Lead, LeadStatus } from "./types";
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 function formatDateSafe(isoValue: string): string {
-  if (!isoValue) return "";
-  const [y, m, d] = isoValue.split("-").map(Number);
-  if (!y || !m || !d) return "";
-  return `${d} ${MONTHS[m - 1]} ${y}`;
+  if (!isoValue || isoValue === "-") return "-";
+  if (/^\d{1,2}\s[A-Za-z]{3}\s\d{4}$/.test(isoValue.trim())) return isoValue.trim();
+  const parts = isoValue.split("-").map(Number);
+  if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+    const [y, m, d] = parts;
+    return `${d} ${MONTHS[m - 1]} ${y}`;
+  }
+  return isoValue;
 }
 
 function todayIso(): string {
@@ -69,6 +73,7 @@ export default function Home() {
   const [formData, setFormData] = useState({ name: "", phone: "", preferredDate: "", preferredTime: "11:00 AM" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [utmData, setUtmData] = useState<UtmData>({ source: "Direct", medium: "", campaign: "" });
   const [highlightServices, setHighlightServices] = useState(false);
 
@@ -115,36 +120,48 @@ export default function Home() {
     return e;
   }
 
-  function handleSubmit(ev: React.FormEvent) {
+  async function handleSubmit(ev: React.FormEvent) {
     ev.preventDefault();
+    setSubmitError("");
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setIsSubmitting(true);
-    setTimeout(() => {
-      const lead: Lead = {
-        id: generateLeadId(),
+
+    try {
+      const activeSvc = SERVICES.find(s => s.name.toLowerCase() === (selectedService || "Hair Spa").toLowerCase());
+      const regularPrice = activeSvc ? activeSvc.price : 999;
+      const offerPrice = Math.max(0, regularPrice - DISCOUNT);
+
+      const lead = await insertLead({
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         service: selectedService || "Hair Spa",
-        preferredDate: formatDateSafe(formData.preferredDate),
+        regularPrice,
+        offerPrice,
+        discountAmount: DISCOUNT,
+        preferredDate: formData.preferredDate,
         preferredTime: formData.preferredTime,
-        source:   utmData.source,
-        medium:   utmData.medium,
+        source: utmData.source,
+        medium: utmData.medium,
         campaign: utmData.campaign,
-        status: "Booking Requested" as LeadStatus,
-        createdAt: new Date().toISOString(),
-      };
-      saveLead(lead);
+        status: "Booking Requested",
+      });
+
       setSubmittedLead(lead);
       setIsSubmitting(false);
       setStep("success");
-    }, 600);
+    } catch (err: any) {
+      console.error("Lead submission error:", err);
+      setIsSubmitting(false);
+      setSubmitError("Unable to submit your request right now. Please try again.");
+    }
   }
 
   function goHome() {
     setStep("landing");
     setFormData({ name: "", phone: "", preferredDate: "", preferredTime: "11:00 AM" });
     setErrors({});
+    setSubmitError("");
     setSubmittedLead(null);
   }
 
@@ -437,6 +454,13 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Error Message Banner */}
+          {submitError && (
+            <div id="submit-error-banner" className="p-2.5 rounded-xl text-xs font-semibold text-center bg-red-500/15 border border-red-500/40 text-red-300">
+              {submitError}
+            </div>
+          )}
+
           {/* ONE Single Submit Button */}
           <div className="mt-1">
             <button
@@ -507,7 +531,7 @@ export default function Home() {
               <div className="flex justify-between py-1 border-b border-white/5">
                 <span className="text-gray-400">Date &amp; Time</span>
                 <span className="font-bold text-amber-300">
-                  {submittedLead.preferredDate} at {submittedLead.preferredTime}
+                  {formatDateSafe(submittedLead.preferredDate)} at {submittedLead.preferredTime}
                 </span>
               </div>
               <div className="flex justify-between py-1">

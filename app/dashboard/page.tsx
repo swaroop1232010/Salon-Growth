@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Lead, LeadStatus } from "../types";
-import { getLeads, updateLeadStatus, completeLead } from "../lib/storage";
+import {
+  fetchLeads,
+  updateLeadStatus,
+  completeLeadVisit,
+  markLeadFollowUpSent,
+  isSupabaseConfigured,
+} from "../lib/supabase";
 import { SERVICES, DISCOUNT } from "../lib/services";
 
 const ALL_STATUSES: LeadStatus[] = [
@@ -410,41 +416,81 @@ export default function Dashboard() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [filter, setFilter] = useState<"All" | LeadStatus>("All");
   const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [followUpLead, setFollowUpLead] = useState<Lead | null>(null);
   const [completingLead, setCompletingLead] = useState<Lead | null>(null);
 
+  async function loadData() {
+    setLoading(true);
+    setLoadError("");
+    try {
+      const data = await fetchLeads();
+      setLeads(data);
+    } catch (err: any) {
+      console.error("Failed to load leads from Supabase:", err);
+      setLoadError("Unable to load leads. Please try again.");
+    } finally {
+      setLoading(false);
+      setMounted(true);
+    }
+  }
+
   useEffect(() => {
-    setLeads(getLeads());
-    setMounted(true);
+    loadData();
   }, []);
 
-  function handleStatusChange(id: string, newStatus: LeadStatus) {
+  async function handleStatusChange(id: string, newStatus: LeadStatus) {
     if (newStatus === "Completed") {
-      const targetLead = leads.find((l) => l.id === id);
+      const targetLead = leads.find((l) => l.id === id || l.dbId === id);
       if (targetLead) {
         setCompletingLead(targetLead);
         return; // wait for modal confirmation
       }
     }
-    updateLeadStatus(id, newStatus);
-    setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status: newStatus } : l)));
+    // Optimistic update
+    setLeads((prev) => prev.map((l) => (l.id === id || l.dbId === id ? { ...l, status: newStatus } : l)));
+    try {
+      await updateLeadStatus(id, newStatus);
+    } catch (err) {
+      console.error("Failed to update status in Supabase:", err);
+      loadData();
+    }
   }
 
-  function handleCompleteLead(id: string, actualVisitDate: string, billAmount: number) {
-    completeLead(id, actualVisitDate, billAmount);
+  async function handleCompleteLead(id: string, actualVisitDate: string, billAmount: number) {
+    // Optimistic update
     setLeads((prev) =>
       prev.map((l) =>
-        l.id === id
+        l.id === id || l.dbId === id
           ? { ...l, status: "Completed" as LeadStatus, actualVisitDate, billAmount }
           : l
       )
     );
     setCompletingLead(null);
+    try {
+      await completeLeadVisit(id, actualVisitDate, billAmount);
+    } catch (err) {
+      console.error("Failed to complete visit in Supabase:", err);
+      loadData();
+    }
   }
 
-  function handleMarkFollowUpSent(id: string) {
-    handleStatusChange(id, "Follow-up Sent");
+  async function handleMarkFollowUpSent(id: string) {
+    setLeads((prev) =>
+      prev.map((l) =>
+        l.id === id || l.dbId === id
+          ? { ...l, status: "Follow-up Sent" as LeadStatus, followUpSentAt: new Date().toISOString() }
+          : l
+      )
+    );
     setFollowUpLead(null);
+    try {
+      await markLeadFollowUpSent(id);
+    } catch (err) {
+      console.error("Failed to mark follow-up in Supabase:", err);
+      loadData();
+    }
   }
 
   // ─── Metric calculations ─────────────────────────────────────────────────────
@@ -497,6 +543,25 @@ export default function Dashboard() {
 
       <main className="max-w-7xl mx-auto px-4 py-6">
         
+        {/* Error notification banner if Supabase fails or is not connected */}
+        {loadError && (
+          <div id="dashboard-error-banner" className="mb-5 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">⚠️</span>
+              <div>
+                <p className="font-bold text-sm">{loadError}</p>
+                <p className="text-xs text-red-600 mt-0.5">Please ensure Supabase credentials are configured in .env.local and public.leads table is created.</p>
+              </div>
+            </div>
+            <button
+              id="retry-load-btn"
+              onClick={loadData}
+              className="px-4 py-2 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition-all shadow-sm w-fit flex-shrink-0">
+              Retry
+            </button>
+          </div>
+        )}
+
         {/* ROW 1: Lead Funnel Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           {[
