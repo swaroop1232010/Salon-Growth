@@ -7,11 +7,9 @@ import { generateLeadId, saveLead } from "./lib/storage";
 import { Lead, LeadStatus } from "./types";
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
-// Store dates as "15 Sep 2026" — avoids all timezone / ISO parsing ambiguity
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 function formatDateSafe(isoValue: string): string {
-  // isoValue is "YYYY-MM-DD" from the date input
   if (!isoValue) return "";
   const [y, m, d] = isoValue.split("-").map(Number);
   if (!y || !m || !d) return "";
@@ -66,12 +64,11 @@ type Step = "landing" | "form" | "success";
 
 export default function Home() {
   const [step, setStep] = useState<Step>("landing");
-  const [selectedService, setSelectedService] = useState<string>("");
+  const [selectedService, setSelectedService] = useState<string>("Hair Spa");
   const [submittedLead, setSubmittedLead] = useState<Lead | null>(null);
-  const [formData, setFormData] = useState({ name: "", phone: "", preferredDate: "", preferredTime: "" });
+  const [formData, setFormData] = useState({ name: "", phone: "", preferredDate: "", preferredTime: "11:00 AM" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [bookingMsg, setBookingMsg] = useState(false);
   const [utmData, setUtmData] = useState<UtmData>({ source: "Direct", medium: "", campaign: "" });
   const [highlightServices, setHighlightServices] = useState(false);
 
@@ -98,6 +95,8 @@ export default function Home() {
     if (p.get("claim") === "true") {
       if (matchedServiceName) {
         setSelectedService(matchedServiceName);
+        setStep("form");
+      } else {
         setStep("form");
       }
     }
@@ -126,27 +125,27 @@ export default function Home() {
         id: generateLeadId(),
         name: formData.name.trim(),
         phone: formData.phone.trim(),
-        service: selectedService,
-        // Store date as "15 Sep 2026" — safe, unambiguous
+        service: selectedService || "Hair Spa",
         preferredDate: formatDateSafe(formData.preferredDate),
         preferredTime: formData.preferredTime,
         source:   utmData.source,
         medium:   utmData.medium,
         campaign: utmData.campaign,
-        status: "New" as LeadStatus,
+        status: "Booking Requested" as LeadStatus,
         createdAt: new Date().toISOString(),
       };
       saveLead(lead);
       setSubmittedLead(lead);
       setIsSubmitting(false);
       setStep("success");
-    }, 800);
+    }, 600);
   }
 
   function goHome() {
-    setStep("landing"); setSelectedService("");
-    setFormData({ name: "", phone: "", preferredDate: "", preferredTime: "" });
-    setErrors({}); setBookingMsg(false); setSubmittedLead(null);
+    setStep("landing");
+    setFormData({ name: "", phone: "", preferredDate: "", preferredTime: "11:00 AM" });
+    setErrors({});
+    setSubmittedLead(null);
   }
 
   function claimOffer() {
@@ -160,7 +159,7 @@ export default function Home() {
   }
 
   // ══════════════════════════════════════════════════════════════════════════════
-  // LANDING PAGE
+  // 1. LANDING PAGE
   // ══════════════════════════════════════════════════════════════════════════════
   if (step === "landing") {
     return (
@@ -168,438 +167,359 @@ export default function Home() {
 
         {/* Top bar */}
         <div style={{ background: "rgba(201,168,76,0.08)", borderBottom: "1px solid rgba(201,168,76,0.15)" }}
-          className="px-6 py-3 flex items-center justify-between">
+          className="px-4 py-2.5 sm:px-6 sm:py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-md flex items-center justify-center"
               style={{ background: "linear-gradient(135deg, #c9a84c, #f0d06e)" }}>
               <ServiceIcon icon="scissors" size={13} color="#1a1a2e" />
             </div>
-            <span className="text-xs font-bold tracking-widest" style={{ color: "#c9a84c" }}>
+            <span className="text-xs font-bold tracking-widest text-amber-300">
               SWASTHIK SALON &amp; BOUTIQUE
             </span>
           </div>
-          <div className="flex items-center gap-2.5">
-            <div className="text-xs font-semibold px-3 py-1 rounded-full"
+          <div className="flex items-center gap-2">
+            <div className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
               style={{ background: "rgba(201,168,76,0.15)", color: "#f0d06e", border: "1px solid rgba(201,168,76,0.25)" }}>
-              &#9733; 4.9 Rated Salon
+              &#9733; 4.9 Rated
             </div>
             <a href="tel:+918501020553" id="customer-call-btn"
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
+              className="text-xs font-semibold px-2.5 py-1 rounded-lg transition-all"
               style={{ background: "rgba(255,255,255,0.06)", color: "#ffffff", border: "1px solid rgba(255,255,255,0.15)" }}>
               &#128222; Call Salon
             </a>
           </div>
         </div>
 
-        {/* Two-column layout */}
-        <div className="flex flex-col lg:flex-row" style={{ minHeight: "calc(100vh - 49px)" }}>
+        {/* Responsive Content Container */}
+        <div className="flex flex-col lg:flex-row max-w-6xl mx-auto" style={{ minHeight: "calc(100vh - 49px)" }}>
 
-          {/* LEFT: Offer hero */}
-          <div className="lg:flex-1 relative flex flex-col justify-center px-6 py-12 lg:px-16 lg:py-20 overflow-hidden">
-            <div className="absolute inset-0 pointer-events-none"
-              style={{ background: "radial-gradient(ellipse 60% 50% at 30% 40%, rgba(201,168,76,0.08) 0%, transparent 70%)" }}/>
-            <div className="relative z-10 max-w-xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-6 text-xs font-semibold"
-                style={{ background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.3)", color: "#f0d06e" }}>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f0d06e", display: "inline-block" }}/>
-                FIRST VISIT SPECIAL
-              </div>
+          {/* LEFT: Offer Hero */}
+          <div className="lg:flex-1 flex flex-col justify-center px-4 py-6 sm:px-8 lg:px-12 lg:py-16">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-3 text-xs font-semibold w-fit"
+              style={{ background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.3)", color: "#f0d06e" }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f0d06e", display: "inline-block" }}/>
+              FIRST VISIT SPECIAL
+            </div>
 
-              <h1 className="text-4xl lg:text-5xl xl:text-6xl font-black mb-4" style={{ color: "#ffffff", lineHeight: 1.1 }}>
-                GET{" "}
-                <span style={{ background: "linear-gradient(135deg, #c9a84c 0%, #f0d06e 50%, #c9a84c 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-                  Rs.200 OFF
-                </span>
-                <br />YOUR FIRST<br />SALON VISIT
-              </h1>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black mb-2 text-white leading-tight">
+              GET{" "}
+              <span style={{ background: "linear-gradient(135deg, #c9a84c 0%, #f0d06e 50%, #c9a84c 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+                &#8377;200 OFF
+              </span>
+              <br />YOUR FIRST VISIT
+            </h1>
 
-              <p className="text-base lg:text-lg mb-8 font-medium" style={{ color: "#9ca3af", maxWidth: 400 }}>
-                Choose your service and claim your offer in 30 seconds.
-                No payment required now.
-              </p>
+            <p className="text-xs sm:text-sm text-gray-400 mb-4 max-w-md">
+              Select your service below to claim your ₹200 discount. No upfront payment required.
+            </p>
 
-              <button id="hero-claim-btn" onClick={claimOffer}
-                className="btn-primary btn-pulse hidden lg:inline-flex items-center gap-2 text-base px-8 py-4">
-                CLAIM MY OFFER
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-                </svg>
-              </button>
-
-              <div className="flex items-center gap-6 mt-8 lg:mt-10">
-                {[{ v: "2,400+", l: "Happy Clients" }, { v: "4.9", l: "Star Rating" }, { v: "8+", l: "Years" }].map(s => (
-                  <div key={s.l}>
-                    <div className="text-lg font-black" style={{ color: "#f0d06e" }}>{s.v}</div>
-                    <div className="text-xs" style={{ color: "#4b5563" }}>{s.l}</div>
-                  </div>
-                ))}
-              </div>
+            <div className="hidden lg:flex items-center gap-6 mt-4">
+              {[{ v: "2,400+", l: "Happy Clients" }, { v: "4.9★", l: "Top Rated" }, { v: "8+ Yrs", l: "Experience" }].map(s => (
+                <div key={s.l}>
+                  <div className="text-base font-black text-amber-300">{s.v}</div>
+                  <div className="text-[11px] text-gray-500">{s.l}</div>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* RIGHT: Service picker */}
-          <div className="lg:w-[500px] xl:w-[540px] flex flex-col px-5 py-8 lg:py-12 lg:px-10"
-            style={{ background: "rgba(255,255,255,0.03)", borderLeft: "1px solid rgba(255,255,255,0.06)" }}>
+          {/* RIGHT: Service Picker */}
+          <div className="lg:w-[460px] xl:w-[480px] flex flex-col justify-center px-4 py-4 sm:px-6 lg:py-10"
+            style={{ background: "rgba(255,255,255,0.02)", borderLeft: "1px solid rgba(255,255,255,0.06)" }}>
 
-            <div className="mb-4">
-              <h2 className="text-lg font-black mb-1" style={{ color: "#ffffff" }}>Choose Your Service</h2>
-              <p className="text-sm" style={{ color: highlightServices ? "#f0d06e" : "#6b7280" }}>
-                {highlightServices ? "Pick a service below to continue" : "Select a service to see your first-visit price"}
-              </p>
+            <div className="mb-2.5 flex items-center justify-between">
+              <h2 className="text-sm font-black text-white uppercase tracking-wider">Choose Service</h2>
+              <span className="text-xs font-semibold text-amber-400">Save &#8377;200 on each</span>
             </div>
 
-            {/* Service cards — expanded pricing */}
-            <div id="services-grid" className="flex flex-col gap-2 mb-6"
-              style={{
-                borderRadius: 14,
-                transition: "box-shadow 0.3s ease",
-                boxShadow: highlightServices ? "0 0 0 2px #c9a84c, 0 0 32px rgba(201,168,76,0.2)" : "none",
-              }}>
+            {/* Service Cards List */}
+            <div id="services-grid" className="flex flex-col gap-2 mb-3">
               {SERVICES.map((svc) => {
                 const isSelected = selectedService === svc.name;
                 const firstVisitPrice = svc.price - DISCOUNT;
                 return (
-                  <button key={svc.name}
+                  <button
+                    key={svc.name}
                     id={`service-${svc.name.replace(/\s+/g, "-").toLowerCase()}`}
                     onClick={() => { setSelectedService(svc.name); setHighlightServices(false); }}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-left w-full transition-all"
+                    className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left w-full transition-all"
                     style={{
                       background: isSelected
                         ? "linear-gradient(135deg, rgba(201,168,76,0.18), rgba(240,208,110,0.1))"
-                        : "rgba(255,255,255,0.04)",
+                        : "rgba(255,255,255,0.03)",
                       border: isSelected ? "1.5px solid #c9a84c" : "1.5px solid rgba(255,255,255,0.07)",
                       cursor: "pointer",
-                      boxShadow: isSelected ? "0 0 0 3px rgba(201,168,76,0.12)" : "none",
+                      boxShadow: isSelected ? "0 0 0 2px rgba(201,168,76,0.15)" : "none",
                     }}>
-                    {/* Icon */}
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: isSelected ? "rgba(201,168,76,0.2)" : "rgba(255,255,255,0.06)" }}>
-                      <ServiceIcon icon={svc.icon} size={18} color={isSelected ? "#f0d06e" : "#6b7280"} />
+                    
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: isSelected ? "rgba(201,168,76,0.25)" : "rgba(255,255,255,0.05)" }}>
+                      <ServiceIcon icon={svc.icon} size={16} color={isSelected ? "#f0d06e" : "#9ca3af"} />
                     </div>
 
-                    {/* Name + pricing */}
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold" style={{ color: isSelected ? "#ffffff" : "#d1d5db" }}>
+                      <div className="text-xs font-bold" style={{ color: isSelected ? "#ffffff" : "#d1d5db" }}>
                         {svc.name}
                       </div>
-                      <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                        {/* First visit price — prominent */}
-                        <span className="text-sm font-black" style={{ color: "#c9a84c" }}>
-                          Rs.{firstVisitPrice}
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs font-black text-amber-400">
+                          &#8377;{firstVisitPrice}
                         </span>
-                        {/* Regular price — struck */}
-                        <span className="text-xs line-through" style={{ color: "#4b5563" }}>
-                          Rs.{svc.price}
+                        <span className="text-[11px] line-through text-gray-500">
+                          &#8377;{svc.price}
                         </span>
-                        {/* Savings badge */}
-                        <span className="text-xs font-semibold px-1.5 py-0.5 rounded"
-                          style={{ background: isSelected ? "rgba(201,168,76,0.25)" : "rgba(201,168,76,0.1)", color: "#f0d06e" }}>
-                          Save Rs.200
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300">
+                          Save &#8377;200
                         </span>
                       </div>
                     </div>
 
-                    {/* Selection tick */}
-                    <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                    <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
                       style={{
                         background: isSelected ? "#c9a84c" : "transparent",
-                        border: isSelected ? "none" : "2px solid rgba(255,255,255,0.15)",
+                        border: isSelected ? "none" : "1.5px solid rgba(255,255,255,0.2)",
                         color: "white",
                       }}>
-                      {isSelected && <CheckIcon size={11} />}
+                      {isSelected && <CheckIcon size={10} />}
                     </div>
                   </button>
                 );
               })}
             </div>
 
-            <button id="claim-offer-btn" onClick={claimOffer}
-              className="btn-primary btn-pulse w-full text-base py-4 mb-3"
-              style={{ width: "100%", fontSize: 15 }}>
-              {selectedService ? `Claim My Offer — ${selectedService}` : "CLAIM MY OFFER"}
+            {/* SINGLE Prominent CTA Button on Mobile and Desktop */}
+            <button
+              id="claim-offer-btn"
+              onClick={claimOffer}
+              className="btn-primary btn-pulse w-full text-sm sm:text-base font-bold py-3.5 rounded-xl shadow-lg"
+              style={{ width: "100%" }}>
+              CLAIM &#8377;200 OFF &bull; {selectedService} &rarr;
             </button>
-            {!selectedService && (
-              <p className="text-center text-xs mb-3" style={{ color: "#4b5563" }}>
-                Select a service above to continue
-              </p>
-            )}
 
-            {/* Trust badges */}
-            <div className="flex justify-center gap-4 pt-1">
-              {[
-                { icon: "shield", label: "No payment now" },
-                { icon: "clock",  label: "30-sec claim"   },
-                { icon: "check",  label: "Free cancel"    },
-              ].map(b => (
-                <div key={b.label} className="flex items-center gap-1.5">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    {b.icon === "shield" && <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>}
-                    {b.icon === "clock"  && <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>}
-                    {b.icon === "check"  && <polyline points="20 6 9 17 4 12"/>}
-                  </svg>
-                  <span className="text-xs" style={{ color: "#4b5563" }}>{b.label}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* How it works */}
-            <div className="mt-7 pt-5" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-              <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#4b5563" }}>How it works</p>
-              <div className="flex flex-col gap-3">
-                {[
-                  { n: "1", t: "Choose a service",   d: "Pick from the list above" },
-                  { n: "2", t: "Claim your offer",    d: "Fill in details in 30 sec" },
-                  { n: "3", t: "We call to confirm",  d: "Our team books your slot" },
-                ].map(item => (
-                  <div key={item.n} className="flex items-start gap-3">
-                    <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 mt-0.5"
-                      style={{ background: "rgba(201,168,76,0.15)", color: "#c9a84c" }}>
-                      {item.n}
-                    </div>
-                    <div>
-                      <span className="text-sm font-semibold" style={{ color: "#d1d5db" }}>{item.t}</span>
-                      <span className="text-xs ml-2" style={{ color: "#4b5563" }}>{item.d}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            {/* Micro trust indicators */}
+            <div className="flex justify-center items-center gap-4 pt-2.5 text-[11px] text-gray-500">
+              <span>&#10003; 30-Sec Booking</span>
+              <span>&bull;</span>
+              <span>&#10003; No Payment Now</span>
+              <span>&bull;</span>
+              <span>&#10003; Free Reschedule</span>
             </div>
           </div>
-        </div>
-
-        {/* Mobile sticky CTA */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 px-4 py-4"
-          style={{ background: "linear-gradient(to top, #0f0f1a 70%, transparent)", zIndex: 40 }}>
-          <button id="claim-offer-btn-mobile" onClick={claimOffer}
-            className="btn-primary btn-pulse w-full text-base py-4"
-            style={{ width: "100%", borderRadius: 14 }}>
-            {selectedService ? `Claim — ${selectedService}` : "CLAIM MY OFFER"}
-          </button>
-          <p className="text-center text-xs mt-2 pb-1" style={{ color: "#4b5563" }}>
-            Rs.200 OFF &middot; No payment required now
-          </p>
-        </div>
-        <div className="lg:hidden h-24"/>
-
-        <div className="text-center py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-          <p className="text-xs" style={{ color: "#374151" }}>&copy; 2026 Swasthik Salon &amp; Boutique</p>
         </div>
       </main>
     );
   }
 
   // ══════════════════════════════════════════════════════════════════════════════
-  // LEAD FORM
+  // 2. LEAD FORM (Non-scrollable, fits 100% in mobile screen)
   // ══════════════════════════════════════════════════════════════════════════════
   if (step === "form") {
-    const svc = SERVICES.find((s) => s.name === selectedService)!;
+    const svc = SERVICES.find((s) => s.name === selectedService) || SERVICES[0];
     const firstVisitPrice = svc.price - DISCOUNT;
+
     return (
-      <main style={{ background: "#0f0f1a", minHeight: "100vh" }}>
-        {/* Top bar */}
-        <div style={{ background: "rgba(201,168,76,0.08)", borderBottom: "1px solid rgba(201,168,76,0.15)" }}
-          className="px-5 py-3 flex items-center gap-3">
+      <main style={{ background: "#0f0f1a", minHeight: "100dvh" }}
+        className="flex flex-col justify-between px-4 py-3 sm:py-6 max-w-lg mx-auto overflow-hidden">
+        
+        {/* Compact Header */}
+        <div className="flex items-center justify-between pb-2 border-b border-white/10">
           <button onClick={() => setStep("landing")}
-            className="text-xs px-3 py-1.5 rounded-lg font-medium"
-            style={{ color: "#c9a84c", background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.2)", cursor: "pointer" }}>
-            &larr; Back
+            className="text-xs px-2.5 py-1 rounded-lg font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 cursor-pointer">
+            &larr; Change Service
           </button>
-          <div>
-            <p className="text-xs font-bold tracking-widest" style={{ color: "#c9a84c" }}>SWASTHIK SALON &amp; BOUTIQUE</p>
-            <p className="text-white font-bold text-sm">Claim Your Offer</p>
+          <div className="text-right">
+            <span className="text-[10px] font-bold text-amber-300 uppercase tracking-widest block">
+              SWASTHIK SALON
+            </span>
+            <span className="text-xs font-bold text-white">Claim &#8377;200 OFF</span>
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row items-start justify-center px-4 py-8 lg:py-12 gap-8 max-w-4xl mx-auto">
+        {/* Selected Service Pill */}
+        <div className="my-2.5 p-2.5 rounded-xl flex items-center justify-between"
+          style={{ background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.3)" }}>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-400/20 text-amber-300">
+              <ServiceIcon icon={svc.icon} size={16} color="#f0d06e" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-white">{svc.name}</div>
+              <div className="text-[11px] text-gray-400">Regular: <span className="line-through">&#8377;{svc.price}</span></div>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-sm font-black text-amber-400">&#8377;{firstVisitPrice}</div>
+            <div className="text-[10px] font-bold text-emerald-400">You Save &#8377;200</div>
+          </div>
+        </div>
 
-          {/* Offer summary sidebar */}
-          <div className="w-full lg:w-72 flex-shrink-0">
-            <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(201,168,76,0.2)" }}>
-              <p className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "#c9a84c" }}>Your Offer</p>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: "rgba(201,168,76,0.15)" }}>
-                  <ServiceIcon icon={svc.icon} size={22} color="#f0d06e" />
-                </div>
-                <div className="font-bold text-white">{svc.name}</div>
-              </div>
+        {/* Compact Single-Screen Form */}
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-2.5 flex-1 justify-center">
+          {/* Name */}
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">
+              Your Name *
+            </label>
+            <input
+              id="input-name"
+              type="text"
+              placeholder="Enter your full name"
+              value={formData.name}
+              onChange={(e) => { setFormData({ ...formData, name: e.target.value }); setErrors({ ...errors, name: "" }); }}
+              className={`form-input py-2 px-3 text-xs rounded-xl ${errors.name ? "error" : ""}`}
+              style={{ background: "rgba(255,255,255,0.06)", borderColor: errors.name ? "#ef4444" : "rgba(255,255,255,0.1)", color: "#ffffff" }}
+            />
+            {errors.name && <p className="text-[10px] text-red-400 mt-0.5">{errors.name}</p>}
+          </div>
 
-              {/* Pricing breakdown */}
-              <div className="rounded-xl p-3 mb-4 space-y-2"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                <div className="flex justify-between text-sm">
-                  <span style={{ color: "#6b7280" }}>Regular Price</span>
-                  <span className="line-through" style={{ color: "#4b5563" }}>Rs.{svc.price}</span>
-                </div>
-                <div className="flex justify-between text-sm font-bold">
-                  <span style={{ color: "#9ca3af" }}>First Visit Price</span>
-                  <span style={{ color: "#f0d06e" }}>Rs.{firstVisitPrice}</span>
-                </div>
-                <div className="h-px" style={{ background: "rgba(255,255,255,0.06)" }}/>
-                <div className="flex justify-between text-sm font-black">
-                  <span style={{ color: "#c9a84c" }}>You Save</span>
-                  <span style={{ color: "#c9a84c" }}>Rs.200</span>
-                </div>
-              </div>
+          {/* Phone */}
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">
+              Mobile Number *
+            </label>
+            <input
+              id="input-phone"
+              type="tel"
+              placeholder="10-digit mobile number"
+              maxLength={10}
+              value={formData.phone}
+              onChange={(e) => {
+                const v = e.target.value.replace(/\D/g, "");
+                setFormData({ ...formData, phone: v });
+                setErrors({ ...errors, phone: "" });
+              }}
+              className={`form-input py-2 px-3 text-xs rounded-xl ${errors.phone ? "error" : ""}`}
+              style={{ background: "rgba(255,255,255,0.06)", borderColor: errors.phone ? "#ef4444" : "rgba(255,255,255,0.1)", color: "#ffffff" }}
+            />
+            {errors.phone && <p className="text-[10px] text-red-400 mt-0.5">{errors.phone}</p>}
+          </div>
 
-              <div className="space-y-2">
-                {["No payment needed now", "Our team confirms within 24h", "Free cancellation"].map(t => (
-                  <div key={t} className="flex items-center gap-2 text-xs" style={{ color: "#6b7280" }}>
-                    <div style={{ color: "#c9a84c", flexShrink: 0 }}><CheckIcon size={12} /></div>
-                    {t}
-                  </div>
+          {/* Date & Time Side by Side */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">
+                Preferred Date *
+              </label>
+              <input
+                id="input-date"
+                type="date"
+                min={todayIso()}
+                value={formData.preferredDate}
+                onChange={(e) => { setFormData({ ...formData, preferredDate: e.target.value }); setErrors({ ...errors, preferredDate: "" }); }}
+                className={`form-input py-2 px-2.5 text-xs rounded-xl ${errors.preferredDate ? "error" : ""}`}
+                style={{ background: "rgba(255,255,255,0.06)", borderColor: errors.preferredDate ? "#ef4444" : "rgba(255,255,255,0.1)", color: "#ffffff" }}
+              />
+              {errors.preferredDate && <p className="text-[10px] text-red-400 mt-0.5">{errors.preferredDate}</p>}
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">
+                Preferred Time *
+              </label>
+              <select
+                id="input-time"
+                value={formData.preferredTime}
+                onChange={(e) => { setFormData({ ...formData, preferredTime: e.target.value }); setErrors({ ...errors, preferredTime: "" }); }}
+                className={`form-input py-2 px-2.5 text-xs rounded-xl ${errors.preferredTime ? "error" : ""}`}
+                style={{ background: "rgba(255,255,255,0.06)", borderColor: errors.preferredTime ? "#ef4444" : "rgba(255,255,255,0.1)", color: "#ffffff" }}>
+                {TIME_SLOTS.map((t) => (
+                  <option key={t} value={t} style={{ background: "#1a1a2e", color: "#ffffff" }}>{t}</option>
                 ))}
-              </div>
+              </select>
             </div>
           </div>
 
-          {/* Form */}
-          <div className="flex-1 w-full">
-            <h2 className="text-2xl font-black mb-1" style={{ color: "#ffffff" }}>Almost there!</h2>
-            <p className="text-sm mb-6" style={{ color: "#6b7280" }}>Tell us when you&apos;d like to visit.</p>
-
-            <form onSubmit={handleSubmit} noValidate className="space-y-4">
-              {/* Name */}
-              <div>
-                <label className="block text-sm font-semibold mb-2" style={{ color: "#9ca3af" }}>Full Name *</label>
-                <input id="input-name" type="text" placeholder="e.g. Priya Sharma" value={formData.name}
-                  onChange={e => { setFormData({...formData, name: e.target.value}); setErrors({...errors, name: ""}); }}
-                  className={`form-input ${errors.name ? "error" : ""}`}
-                  style={{ background: "rgba(255,255,255,0.06)", borderColor: errors.name ? "#ef4444" : "rgba(255,255,255,0.1)", color: "#ffffff" }} />
-                {errors.name && <p className="text-xs mt-1" style={{ color: "#ef4444" }}>{errors.name}</p>}
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label className="block text-sm font-semibold mb-2" style={{ color: "#9ca3af" }}>Mobile Number *</label>
-                <input id="input-phone" type="tel" placeholder="10-digit mobile number" maxLength={10} value={formData.phone}
-                  onChange={e => { const v = e.target.value.replace(/\D/g, ""); setFormData({...formData, phone: v}); setErrors({...errors, phone: ""}); }}
-                  className={`form-input ${errors.phone ? "error" : ""}`}
-                  style={{ background: "rgba(255,255,255,0.06)", borderColor: errors.phone ? "#ef4444" : "rgba(255,255,255,0.1)", color: "#ffffff" }} />
-                {errors.phone && <p className="text-xs mt-1" style={{ color: "#ef4444" }}>{errors.phone}</p>}
-              </div>
-
-              {/* Service — read-only */}
-              <div>
-                <label className="block text-sm font-semibold mb-2" style={{ color: "#9ca3af" }}>Selected Service</label>
-                <input id="input-service" type="text" value={selectedService} readOnly
-                  className="form-input"
-                  style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.06)", color: "#6b7280", cursor: "default" }} />
-              </div>
-
-              {/* Date + Time side by side */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold mb-2" style={{ color: "#9ca3af" }}>Preferred Date *</label>
-                  <input id="input-date" type="date" min={todayIso()} value={formData.preferredDate}
-                    onChange={e => { setFormData({...formData, preferredDate: e.target.value}); setErrors({...errors, preferredDate: ""}); }}
-                    className={`form-input ${errors.preferredDate ? "error" : ""}`}
-                    style={{ background: "rgba(255,255,255,0.06)", borderColor: errors.preferredDate ? "#ef4444" : "rgba(255,255,255,0.1)", color: "#ffffff" }} />
-                  {errors.preferredDate && <p className="text-xs mt-1" style={{ color: "#ef4444" }}>{errors.preferredDate}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold mb-2" style={{ color: "#9ca3af" }}>Preferred Time *</label>
-                  <select id="input-time" value={formData.preferredTime}
-                    onChange={e => { setFormData({...formData, preferredTime: e.target.value}); setErrors({...errors, preferredTime: ""}); }}
-                    className={`form-input ${errors.preferredTime ? "error" : ""}`}
-                    style={{ background: "rgba(255,255,255,0.06)", borderColor: errors.preferredTime ? "#ef4444" : "rgba(255,255,255,0.1)", color: formData.preferredTime ? "#ffffff" : "#6b7280" }}>
-                    <option value="" style={{ background: "#1a1a2e" }}>Select time</option>
-                    {TIME_SLOTS.map(t => (
-                      <option key={t} value={t} style={{ background: "#1a1a2e", color: "#ffffff" }}>{t}</option>
-                    ))}
-                  </select>
-                  {errors.preferredTime && <p className="text-xs mt-1" style={{ color: "#ef4444" }}>{errors.preferredTime}</p>}
-                </div>
-              </div>
-
-              <p className="text-xs italic" style={{ color: "#4b5563" }}>
-                These are appointment preferences. Our team will confirm availability.
-              </p>
-
-              <button id="submit-form-btn" type="submit" disabled={isSubmitting}
-                className="btn-primary w-full text-base py-4" style={{ width: "100%" }}>
-                {isSubmitting ? "Submitting..." : "Request My Appointment"}
-              </button>
-              <p className="text-center text-xs" style={{ color: "#374151" }}>
-                By submitting, you agree to be contacted by our team to confirm your appointment.
-              </p>
-            </form>
+          {/* ONE Single Submit Button */}
+          <div className="mt-1">
+            <button
+              id="submit-form-btn"
+              type="submit"
+              disabled={isSubmitting}
+              className="btn-primary w-full text-sm font-bold py-3.5 rounded-xl shadow-lg"
+              style={{ width: "100%" }}>
+              {isSubmitting ? "Locking Your Offer..." : "Claim \u20B9200 OFF & Confirm Booking \u2192"}
+            </button>
+            <p className="text-center text-[10px] text-gray-500 mt-1.5">
+              1-click instant confirmation &bull; No advance payment needed
+            </p>
           </div>
+        </form>
+
+        <div className="text-center pt-2 text-[10px] text-gray-600 border-t border-white/5">
+          &copy; Swasthik Salon &amp; Boutique &bull; 100% Privacy Guaranteed
         </div>
       </main>
     );
   }
 
   // ══════════════════════════════════════════════════════════════════════════════
-  // SUCCESS PAGE
+  // 3. SUCCESS / CONFIRMATION PAGE (Directly confirmed, NO 2nd button!)
   // ══════════════════════════════════════════════════════════════════════════════
   if (step === "success" && submittedLead) {
     return (
-      <main style={{ background: "#0f0f1a", minHeight: "100vh" }}
-        className="flex flex-col items-center justify-center px-4 py-10">
-        <div className="w-full max-w-md">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-5 float-anim"
-              style={{ background: "linear-gradient(135deg, #c9a84c, #f0d06e)" }}>
-              <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#1a1a2e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
+      <main style={{ background: "#0f0f1a", minHeight: "100dvh" }}
+        className="flex flex-col items-center justify-center px-4 py-6">
+        <div className="w-full max-w-sm">
+          
+          {/* Instant Confirmation Header */}
+          <div className="text-center mb-5">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-3"
+              style={{ background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 0 30px rgba(16,185,129,0.3)" }}>
+              <CheckIcon size={30} />
             </div>
-            <h1 className="text-3xl font-black mb-2" style={{ color: "#ffffff" }}>
-              Appointment Request Received!
+            <h1 className="text-2xl font-black text-white mb-1">
+              Appointment Confirmed!
             </h1>
-            <p style={{ color: "#6b7280" }}>Our team will contact you to confirm your appointment.</p>
+            <p className="text-xs text-emerald-400 font-semibold">
+              &#10003; Your &#8377;200 OFF First Visit Offer is locked in.
+            </p>
           </div>
 
-          {/* Confirmation card */}
-          <div className="rounded-2xl p-6 mb-5"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(201,168,76,0.2)" }}>
-            <div className="text-center py-2 px-4 rounded-xl mb-5 text-xs font-bold tracking-widest uppercase"
-              style={{ background: "rgba(201,168,76,0.12)", color: "#f0d06e", border: "1px solid rgba(201,168,76,0.2)" }}>
-              Ref: {submittedLead.id}
+          {/* Booking Summary Card */}
+          <div className="rounded-2xl p-4 mb-4"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(201,168,76,0.25)" }}>
+            <div className="text-center py-1.5 px-3 rounded-lg mb-3 text-xs font-bold tracking-widest uppercase"
+              style={{ background: "rgba(201,168,76,0.15)", color: "#f0d06e", border: "1px solid rgba(201,168,76,0.2)" }}>
+              Booking Ref: {submittedLead.id}
             </div>
-            <div className="space-y-3">
-              {[
-                { label: "Customer",        value: submittedLead.name },
-                { label: "Service",         value: submittedLead.service },
-                { label: "Preferred Date",  value: submittedLead.preferredDate },
-                { label: "Preferred Time",  value: submittedLead.preferredTime },
-                { label: "Offer",           value: OFFER_TEXT, gold: true },
-              ].map(row => (
-                <div key={row.label} className="flex items-start gap-3">
-                  <div className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0" style={{ background: "#c9a84c" }}/>
-                  <div>
-                    <div className="text-xs mb-0.5" style={{ color: "#4b5563" }}>{row.label}</div>
-                    <div className="text-sm font-semibold" style={{ color: row.gold ? "#f0d06e" : "#ffffff" }}>
-                      {row.value}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
 
-          {!bookingMsg ? (
-            <button id="book-appointment-btn" onClick={() => setBookingMsg(true)}
-              className="btn-primary w-full mb-3" style={{ width: "100%" }}>
-              Confirm My Appointment
-            </button>
-          ) : (
-            <div className="w-full text-center py-4 px-5 rounded-xl mb-3 text-sm"
-              style={{ background: "rgba(16,185,129,0.1)", color: "#34d399", border: "1px solid rgba(16,185,129,0.2)" }}>
-              <div className="font-semibold mb-1">Request received!</div>
-              <div className="text-xs" style={{ color: "#6b7280" }}>
-                Our team will call you at {submittedLead.phone} to confirm the appointment.
+            <div className="space-y-2.5 text-xs">
+              <div className="flex justify-between py-1 border-b border-white/5">
+                <span className="text-gray-400">Customer</span>
+                <span className="font-bold text-white">{submittedLead.name}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-white/5">
+                <span className="text-gray-400">Service</span>
+                <span className="font-bold text-white">{submittedLead.service}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-white/5">
+                <span className="text-gray-400">Date &amp; Time</span>
+                <span className="font-bold text-amber-300">
+                  {submittedLead.preferredDate} at {submittedLead.preferredTime}
+                </span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="text-gray-400">Special Offer</span>
+                <span className="font-black text-emerald-400">&#8377;200 OFF Applied</span>
               </div>
             </div>
-          )}
-          <button id="back-home-btn" onClick={goHome}
-            className="btn-secondary w-full"
+          </div>
+
+          {/* Immediate Next Step Message */}
+          <div className="w-full text-center py-3 px-4 rounded-xl mb-4 text-xs leading-relaxed"
+            style={{ background: "rgba(16,185,129,0.1)", color: "#34d399", border: "1px solid rgba(16,185,129,0.2)" }}>
+            Our team will call you at <strong>{submittedLead.phone}</strong> to welcome you!
+          </div>
+
+          {/* Single Return Button */}
+          <button
+            id="back-home-btn"
+            onClick={goHome}
+            className="btn-secondary w-full text-xs font-bold py-3 rounded-xl"
             style={{ width: "100%", borderColor: "rgba(201,168,76,0.3)", color: "#c9a84c" }}>
             &larr; Back to Home
           </button>
+
         </div>
       </main>
     );
