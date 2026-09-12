@@ -76,8 +76,10 @@ export default function Home() {
   const [submitError, setSubmitError] = useState("");
   const [utmData, setUtmData] = useState<UtmData>({ source: "Direct", medium: "", campaign: "" });
   const [highlightServices, setHighlightServices] = useState(false);
+  const [minDate, setMinDate] = useState("");
 
   useEffect(() => {
+    setMinDate(todayIso());
     const p = new URLSearchParams(window.location.search);
     const rs = p.get("utm_source") || "";
     const rm = p.get("utm_medium") || "";
@@ -428,7 +430,8 @@ export default function Home() {
               <input
                 id="input-date"
                 type="date"
-                min={todayIso()}
+                min={minDate || undefined}
+                suppressHydrationWarning
                 value={formData.preferredDate}
                 onChange={(e) => { setFormData({ ...formData, preferredDate: e.target.value }); setErrors({ ...errors, preferredDate: "" }); }}
                 className={`form-input py-2 px-2.5 text-xs rounded-xl w-full min-w-0 block ${errors.preferredDate ? "error" : ""}`}
