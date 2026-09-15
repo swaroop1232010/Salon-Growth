@@ -14,119 +14,148 @@ export const isSupabaseConfigured = Boolean(
   !supabaseAnonKey.includes("your-supabase-anon")
 );
 
-// Create Supabase client
+// Supabase client — uses publishable/anon key only (never service-role key)
 export const supabase = createClient(
   supabaseUrl || "https://placeholder.supabase.co",
   supabaseAnonKey || "placeholder"
 );
 
+// Dedicated unauthenticated client for public customer lead capture
+// Ensures staff auth sessions never leak into public customer submissions
+export const supabasePublic = createClient(
+  supabaseUrl || "https://placeholder.supabase.co",
+  supabaseAnonKey || "placeholder",
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  }
+);
+
+// ─── Auth Helpers ─────────────────────────────────────────────────────────────
+
+/** Returns the current authenticated session, or null if not logged in. */
+export async function getSession() {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session;
+}
+
+/** Signs in a staff user with email and password. Throws on failure. */
+export async function signIn(email: string, password: string) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw new Error(error.message);
+  return data.session;
+}
+
+/** Signs out the current staff user. Throws on failure. */
+export async function signOut() {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw new Error(error.message);
+}
+
+// ─── Date Utilities ───────────────────────────────────────────────────────────
+
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 /**
- * Normalizes any date string (ISO or "15 Sep 2026") into a Postgres DATE format "YYYY-MM-DD".
+ * Normalizes any date string (ISO or "15 Sep 2026") to Postgres DATE "YYYY-MM-DD".
  */
 export function toPostgresDate(dateStr?: string | null): string | null {
   if (!dateStr || dateStr.trim() === "-" || dateStr.trim() === "") return null;
   const s = dateStr.trim();
-  
-  // Check if already YYYY-MM-DD
+
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
 
-  // Check if "15 Sep 2026" format
   const parts = s.split(" ");
   if (parts.length === 3) {
     const day = parts[0].padStart(2, "0");
     const mIdx = MONTHS.indexOf(parts[1]);
     const year = parts[2];
     if (mIdx !== -1 && /^\d{4}$/.test(year)) {
-      const month = String(mIdx + 1).padStart(2, "0");
-      return `${year}-${month}-${day}`;
+      return `${year}-${String(mIdx + 1).padStart(2, "0")}-${day}`;
     }
   }
 
-  // Fallback to JS date parse
   try {
     const d = new Date(s);
     if (!isNaN(d.getTime())) {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     }
   } catch {
-    // ignore
+    // unparseable — fall through to null
   }
   return null;
 }
 
 /**
- * Maps a database row from public.leads to the UI Lead model.
+ * Maps a Supabase database row (public.leads) to the UI Lead model.
  */
 export function fromDbLead(row: DbLead): Lead {
   return {
-    id: row.reference_id || row.id,
-    dbId: row.id,
-    referenceId: row.reference_id,
-    name: row.name,
-    phone: row.phone,
-    service: row.service,
-    regularPrice: row.regular_price !== null ? Number(row.regular_price) : undefined,
-    offerPrice: row.offer_price !== null ? Number(row.offer_price) : undefined,
+    id:             row.reference_id || row.id,
+    dbId:           row.id,
+    referenceId:    row.reference_id,
+    name:           row.name,
+    phone:          row.phone,
+    service:        row.service,
+    regularPrice:   row.regular_price   !== null ? Number(row.regular_price)   : undefined,
+    offerPrice:     row.offer_price     !== null ? Number(row.offer_price)     : undefined,
     discountAmount: row.discount_amount !== null ? Number(row.discount_amount) : undefined,
-    preferredDate: row.preferred_date || "-",
-    preferredTime: row.preferred_time || "",
-    source: row.source || "Direct",
-    medium: row.medium || "",
-    campaign: row.campaign || "",
-    status: row.status,
-    createdAt: row.created_at,
+    preferredDate:  row.preferred_date  || "-",
+    preferredTime:  row.preferred_time  || "",
+    source:         row.source          || "Direct",
+    medium:         row.medium          || "",
+    campaign:       row.campaign        || "",
+    status:         row.status,
+    createdAt:      row.created_at,
     actualVisitDate: row.actual_visit_date || undefined,
-    billAmount: row.bill_amount !== null && row.bill_amount !== undefined ? Number(row.bill_amount) : undefined,
+    billAmount:     row.bill_amount !== null && row.bill_amount !== undefined
+                      ? Number(row.bill_amount) : undefined,
     followUpSentAt: row.follow_up_sent_at || undefined,
   };
 }
 
+// ─── Reference ID Generator ───────────────────────────────────────────────────
+
 /**
- * Safe, collision-resistant next reference ID generator from Supabase.
- * Generates sequential SGS-001, SGS-002, SGS-003 without relying on LocalStorage.
+ * Returns the next sequential reference ID (e.g. SGS-007).
+ *
+ * Anonymous users cannot SELECT leads due to RLS — this falls back to a
+ * timestamp-based ID so lead insertion from the landing page still works.
  */
 export async function getNextReferenceId(): Promise<string> {
-  if (!isSupabaseConfigured) {
-    // Fallback if Supabase is not yet configured with real credentials
-    return `SGS-${String(Math.floor(Math.random() * 900) + 100)}`;
-  }
+  // Generates a collision-resistant sequential timestamp reference ID (e.g. SGS-894231)
+  return `SGS-${Date.now().toString().slice(-4)}${Math.floor(100 + Math.random() * 900)}`;
+}
+
+// ─── Lead Operations ──────────────────────────────────────────────────────────
+
+/**
+ * Checks whether a phone number has already claimed a first-visit offer.
+ * Calls the check_phone_claimed RPC function in Supabase if installed.
+ */
+export async function checkPhoneClaimed(phone: string): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  const digits = phone.replace(/\D/g, "").slice(-10);
+  if (digits.length < 10) return false;
 
   try {
-    const { data, error } = await supabase
-      .from("leads")
-      .select("reference_id")
-      .order("created_at", { ascending: false })
-      .limit(100);
-
-    if (error || !data || data.length === 0) {
-      return "SGS-001";
+    const { data, error } = await supabasePublic.rpc("check_phone_claimed", { p_phone: digits });
+    if (!error && typeof data === "boolean") {
+      return data;
     }
-
-    let maxNum = 0;
-    for (const row of data) {
-      if (row.reference_id) {
-        const match = row.reference_id.match(/SGS-(\d+)/i);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (num > maxNum) maxNum = num;
-        }
-      }
-    }
-    const nextNum = maxNum + 1;
-    return `SGS-${String(nextNum).padStart(3, "0")}`;
-  } catch (err) {
-    console.error("Error generating reference id from Supabase:", err);
-    return `SGS-${Date.now().toString().slice(-4)}`;
+  } catch {
+    // Graceful fallback if RPC function is not yet created
   }
+  return false;
 }
 
 /**
- * Inserts a new lead into Supabase public.leads table.
+ * Inserts a new lead into public.leads.
+ * Uses supabasePublic to guarantee execution under anonymous role without staff session conflicts.
+ * Prevents multiple claims with the same phone number.
  */
 export async function insertLead(leadData: {
   name: string;
@@ -143,158 +172,139 @@ export async function insertLead(leadData: {
   status?: LeadStatus;
 }): Promise<Lead> {
   if (!isSupabaseConfigured) {
-    throw new Error("Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in .env.local.");
+    throw new Error("Supabase is not configured. Check .env.local for NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.");
+  }
+
+  const cleanPhone = leadData.phone.replace(/\D/g, "").slice(-10);
+
+  // Proactive check if phone was already claimed
+  const isAlreadyClaimed = await checkPhoneClaimed(cleanPhone);
+  if (isAlreadyClaimed) {
+    throw new Error("This mobile number has already claimed this offer. Only 1 offer is allowed per customer.");
   }
 
   let refId = await getNextReferenceId();
 
-  const insertPayload = {
-    reference_id: refId,
-    name: leadData.name.trim(),
-    phone: leadData.phone.trim(),
-    service: leadData.service,
-    regular_price: leadData.regularPrice,
-    offer_price: leadData.offerPrice,
+  const payload = {
+    reference_id:   refId,
+    name:           leadData.name.trim(),
+    phone:          cleanPhone,
+    service:        leadData.service,
+    regular_price:  leadData.regularPrice,
+    offer_price:    leadData.offerPrice,
     discount_amount: leadData.discountAmount,
     preferred_date: toPostgresDate(leadData.preferredDate),
     preferred_time: leadData.preferredTime,
-    source: leadData.source || "Direct",
-    medium: leadData.medium || "",
-    campaign: leadData.campaign || "",
-    status: leadData.status || "Booking Requested",
+    source:         leadData.source   || "Direct",
+    medium:         leadData.medium   || "",
+    campaign:       leadData.campaign || "",
+    status:         leadData.status   || "Booking Requested",
   };
 
-  let { data, error } = await supabase
-    .from("leads")
-    .insert([insertPayload])
-    .select()
-    .single();
+  let { error } = await supabasePublic.from("leads").insert([payload]);
 
-  // Retry once with incremented ID if unique constraint violation occurs
+  // Unique constraint violation (23505)
   if (error && error.code === "23505") {
-    const fallbackNum = Math.floor(Math.random() * 9000) + 1000;
-    refId = `SGS-${fallbackNum}`;
-    insertPayload.reference_id = refId;
-    const retryResult = await supabase
-      .from("leads")
-      .insert([insertPayload])
-      .select()
-      .single();
-    data = retryResult.data;
-    error = retryResult.error;
-  }
-
-  if (error || !data) {
-    console.error(
-      "Supabase insert lead error:",
-      error?.message || "Unknown error",
-      `[Code: ${error?.code || "none"}]`,
-      error?.details ? `Details: ${error.details}` : "",
-      error?.hint ? `Hint: ${error.hint}` : ""
-    );
-    if (error?.code === "42501") {
-      console.warn(
-        "Row Level Security (RLS) Policy Error: Please run the RLS policy in Supabase SQL Editor: CREATE POLICY \"Allow anon insert and select for leads\" ON public.leads FOR ALL USING (true) WITH CHECK (true);"
-      );
+    const errorDetails = ((error.message || "") + " " + (error.details || "")).toLowerCase();
+    if (errorDetails.includes("phone")) {
+      throw new Error("This mobile number has already claimed this offer. Only 1 offer is allowed per customer.");
     }
-    throw new Error(error?.message || "Failed to insert lead into Supabase.");
+
+    // Otherwise reference_id collision — retry once with a fresh random ID
+    payload.reference_id = `SGS-${Date.now().toString().slice(-4)}${Math.floor(1000 + Math.random() * 9000)}`;
+    const retry = await supabasePublic.from("leads").insert([payload]);
+    error = retry.error;
+    if (error && error.code === "23505") {
+      throw new Error("This mobile number has already claimed this offer. Only 1 offer is allowed per customer.");
+    }
   }
 
-  return fromDbLead(data as DbLead);
+  if (error) {
+    throw new Error(error.message || "Failed to insert lead.");
+  }
+
+  return {
+    id: payload.reference_id,
+    referenceId: payload.reference_id,
+    name: payload.name,
+    phone: payload.phone,
+    service: payload.service,
+    regularPrice: payload.regular_price,
+    offerPrice: payload.offer_price,
+    discountAmount: payload.discount_amount,
+    preferredDate: leadData.preferredDate || "-",
+    preferredTime: payload.preferred_time,
+    source: payload.source,
+    medium: payload.medium,
+    campaign: payload.campaign,
+    status: payload.status as LeadStatus,
+    createdAt: new Date().toISOString(),
+  };
 }
 
 /**
- * Fetches all leads from Supabase public.leads, sorted newest first.
+ * Fetches all leads sorted newest-first.
+ * Requires authenticated session (RLS: "auth_select_leads" policy).
  */
 export async function fetchLeads(): Promise<Lead[]> {
-  if (!isSupabaseConfigured) {
-    throw new Error("Supabase is not configured.");
-  }
+  if (!isSupabaseConfigured) throw new Error("Supabase is not configured.");
 
   const { data, error } = await supabase
     .from("leads")
     .select("*")
     .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("Supabase fetch leads error:", error);
-    throw new Error(error.message);
-  }
-
+  if (error) throw new Error(error.message);
   return ((data || []) as DbLead[]).map(fromDbLead);
 }
 
 /**
- * Updates status of a lead in Supabase.
+ * Updates the status of a lead.
+ * Requires authenticated session (RLS: "auth_update_leads" policy).
  */
 export async function updateLeadStatus(idOrRef: string, status: LeadStatus): Promise<void> {
-  if (!isSupabaseConfigured) {
-    throw new Error("Supabase is not configured.");
-  }
+  if (!isSupabaseConfigured) throw new Error("Supabase is not configured.");
 
-  // Update either by UUID id or reference_id
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrRef);
-  const query = supabase.from("leads").update({ status });
   const { error } = isUuid
-    ? await query.eq("id", idOrRef)
-    : await query.eq("reference_id", idOrRef);
+    ? await supabase.from("leads").update({ status }).eq("id", idOrRef)
+    : await supabase.from("leads").update({ status }).eq("reference_id", idOrRef);
 
-  if (error) {
-    console.error("Supabase update status error:", error);
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 }
 
 /**
- * Completes a lead with actual visit date and collected bill amount.
+ * Marks a lead as Completed with actual visit date and collected bill amount.
+ * Requires authenticated session (RLS: "auth_update_leads" policy).
  */
 export async function completeLeadVisit(
   idOrRef: string,
   actualVisitDate: string,
   billAmount: number
 ): Promise<void> {
-  if (!isSupabaseConfigured) {
-    throw new Error("Supabase is not configured.");
-  }
+  if (!isSupabaseConfigured) throw new Error("Supabase is not configured.");
 
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrRef);
-  const pgDate = toPostgresDate(actualVisitDate);
-  const query = supabase.from("leads").update({
-    status: "Completed",
-    actual_visit_date: pgDate,
-    bill_amount: billAmount,
-  });
-
+  const update = { status: "Completed", actual_visit_date: toPostgresDate(actualVisitDate), bill_amount: billAmount };
   const { error } = isUuid
-    ? await query.eq("id", idOrRef)
-    : await query.eq("reference_id", idOrRef);
+    ? await supabase.from("leads").update(update).eq("id", idOrRef)
+    : await supabase.from("leads").update(update).eq("reference_id", idOrRef);
 
-  if (error) {
-    console.error("Supabase complete visit error:", error);
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 }
 
 /**
- * Marks follow-up as sent and records timestamp.
+ * Marks a lead's follow-up as sent and records the timestamp.
+ * Requires authenticated session (RLS: "auth_update_leads" policy).
  */
 export async function markLeadFollowUpSent(idOrRef: string): Promise<void> {
-  if (!isSupabaseConfigured) {
-    throw new Error("Supabase is not configured.");
-  }
+  if (!isSupabaseConfigured) throw new Error("Supabase is not configured.");
 
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrRef);
-  const query = supabase.from("leads").update({
-    status: "Follow-up Sent",
-    follow_up_sent_at: new Date().toISOString(),
-  });
-
+  const update = { status: "Follow-up Sent", follow_up_sent_at: new Date().toISOString() };
   const { error } = isUuid
-    ? await query.eq("id", idOrRef)
-    : await query.eq("reference_id", idOrRef);
+    ? await supabase.from("leads").update(update).eq("id", idOrRef)
+    : await supabase.from("leads").update(update).eq("reference_id", idOrRef);
 
-  if (error) {
-    console.error("Supabase mark follow up sent error:", error);
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 }

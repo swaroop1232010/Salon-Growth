@@ -18,8 +18,9 @@
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
-  background: var(--cream);
-  color: var(--text-dark);
+  background: #0f0f1a;
+  color: #ffffff;
+  color-scheme: dark;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -131,12 +132,12 @@ a, button, input, select, textarea {
 /* Form input styling */
 .form-input {
   width: 100%;
-  padding: 14px 16px;
-  border: 2px solid #e5e7eb;
+  padding: 12px 14px;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
-  font-size: 15px;
-  background: white;
-  color: #1a1a2e;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #ffffff !important;
   outline: none;
   font-family: 'Inter', sans-serif;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -144,10 +145,19 @@ a, button, input, select, textarea {
 .form-input::placeholder { color: #9ca3af; }
 .form-input:focus {
   border-color: #c9a84c !important;
+  background: rgba(255, 255, 255, 0.08) !important;
   box-shadow: 0 0 0 3px rgba(201,168,76,0.15);
 }
 .form-input.error {
   border-color: #ef4444 !important;
+}
+.form-input:-webkit-autofill,
+.form-input:-webkit-autofill:hover, 
+.form-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0px 1000px #1a1a2e inset !important;
+  box-shadow: 0 0 0px 1000px #1a1a2e inset !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 /* Status badge colors */

@@ -46,11 +46,59 @@ BEFORE UPDATE ON public.leads
 FOR EACH ROW
 EXECUTE FUNCTION public.handle_updated_at();
 
--- RLS Configuration for Phase 1
+-- ============================================================
+-- RLS Configuration — Phase 2 (Secure)
+-- ============================================================
 ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow anon insert and select for leads"
+-- Drop Phase 1 unrestricted policy (if it exists)
+DROP POLICY IF EXISTS "Allow anon insert and select for leads" ON public.leads;
+
+-- Anonymous users (landing page visitors): INSERT only
+-- This allows the lead capture form to work without authentication.
+CREATE POLICY "anon_insert_leads"
 ON public.leads
-FOR ALL
+FOR INSERT
+TO anon
+WITH CHECK (true);
+
+-- Authenticated salon staff: SELECT all leads
+CREATE POLICY "auth_select_leads"
+ON public.leads
+FOR SELECT
+TO authenticated
+USING (true);
+
+-- Authenticated salon staff: UPDATE leads
+-- Covers status changes, bill amounts, follow-up timestamps.
+CREATE POLICY "auth_update_leads"
+ON public.leads
+FOR UPDATE
+TO authenticated
 USING (true)
 WITH CHECK (true);
+
+-- No DELETE policy — nobody can delete leads.
+
+-- ============================================================
+-- Phone Uniqueness & Duplicate Offer Prevention
+-- ============================================================
+
+-- Enforce 1 offer per customer (Unique phone number)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_leads_phone_unique ON public.leads (phone);
+
+-- Function to check if a phone number has already claimed an offer (safe for anon callers)
+CREATE OR REPLACE FUNCTION public.check_phone_claimed(p_phone TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.leads WHERE phone = p_phone
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.check_phone_claimed(TEXT) TO anon, authenticated;
+-- ============================================================

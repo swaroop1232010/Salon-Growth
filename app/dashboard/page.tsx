@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Lead, LeadStatus } from "../types";
 import {
   fetchLeads,
@@ -9,8 +10,15 @@ import {
   completeLeadVisit,
   markLeadFollowUpSent,
   isSupabaseConfigured,
+  supabase,
+  signOut,
 } from "../lib/supabase";
 import { SERVICES, DISCOUNT } from "../lib/services";
+
+/** Clears the proxy auth cookie on logout. */
+function clearAuthCookie() {
+  document.cookie = "sgs-staff-auth=; path=/; max-age=0; SameSite=Lax";
+}
 
 const ALL_STATUSES: LeadStatus[] = [
   "New", "Contacted", "Booking Requested", "Booked", "Completed", "Lost", "Follow-up Sent",
@@ -64,7 +72,7 @@ function parseSafeDateToIso(str: string | undefined): string {
 function getDefaultBillForService(serviceName: string): number {
   const match = SERVICES.find(s => s.name.toLowerCase() === serviceName.toLowerCase());
   if (match) {
-    return Math.max(0, match.price - DISCOUNT);
+    return match.offerPrice ?? Math.max(0, match.price - (match.discountAmount ?? DISCOUNT));
   }
   return 0;
 }
@@ -413,6 +421,7 @@ function CampaignSummary({ leads }: { leads: Lead[] }) {
 
 // ─── Main Dashboard Component ────────────────────────────────────────────────
 export default function Dashboard() {
+  const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [filter, setFilter] = useState<"All" | LeadStatus>("All");
   const [mounted, setMounted] = useState(false);
@@ -421,14 +430,44 @@ export default function Dashboard() {
   const [followUpLead, setFollowUpLead] = useState<Lead | null>(null);
   const [completingLead, setCompletingLead] = useState<Lead | null>(null);
 
+  // ─── Auth state ──────────────────────────────────────────────────────────────
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
+
+  // Check session on mount — defense-in-depth beyond middleware
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        router.replace("/login");
+        return;
+      }
+      setUserEmail(session.user.email ?? null);
+      setAuthChecked(true);
+    });
+  }, [router]);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    setLogoutError("");
+    try {
+      clearAuthCookie();
+      await signOut();
+      router.replace("/login");
+    } catch {
+      setLogoutError("Logout failed. Please try again.");
+      setLoggingOut(false);
+    }
+  }
+
   async function loadData() {
     setLoading(true);
     setLoadError("");
     try {
       const data = await fetchLeads();
       setLeads(data);
-    } catch (err: any) {
-      console.error("Failed to load leads from Supabase:", err);
+    } catch {
       setLoadError("Unable to load leads. Please try again.");
     } finally {
       setLoading(false);
@@ -437,8 +476,10 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (authChecked) {
+      loadData();
+    }
+  }, [authChecked]);
 
   async function handleStatusChange(id: string, newStatus: LeadStatus) {
     if (newStatus === "Completed") {
@@ -452,8 +493,7 @@ export default function Dashboard() {
     setLeads((prev) => prev.map((l) => (l.id === id || l.dbId === id ? { ...l, status: newStatus } : l)));
     try {
       await updateLeadStatus(id, newStatus);
-    } catch (err) {
-      console.error("Failed to update status in Supabase:", err);
+    } catch {
       loadData();
     }
   }
@@ -470,8 +510,7 @@ export default function Dashboard() {
     setCompletingLead(null);
     try {
       await completeLeadVisit(id, actualVisitDate, billAmount);
-    } catch (err) {
-      console.error("Failed to complete visit in Supabase:", err);
+    } catch {
       loadData();
     }
   }
@@ -487,8 +526,7 @@ export default function Dashboard() {
     setFollowUpLead(null);
     try {
       await markLeadFollowUpSent(id);
-    } catch (err) {
-      console.error("Failed to mark follow-up in Supabase:", err);
+    } catch {
       loadData();
     }
   }
@@ -507,10 +545,31 @@ export default function Dashboard() {
 
   const filteredLeads = filter === "All" ? leads : leads.filter((l) => l.status === filter);
 
+  // Show auth loading screen until session is verified
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#f1f5f9" }}>
+        <div className="flex flex-col items-center gap-3">
+          <div
+            className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+            style={{ borderColor: "#c9a84c", borderTopColor: "transparent" }}
+          />
+          <p style={{ color: "#6b7280" }} className="text-sm">Verifying session…</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "#f1f5f9" }}>
-        <p style={{ color: "#6b7280" }}>Loading dashboard...</p>
+        <div className="flex flex-col items-center gap-3">
+          <div
+            className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+            style={{ borderColor: "#c9a84c", borderTopColor: "transparent" }}
+          />
+          <p style={{ color: "#6b7280" }} className="text-sm">Loading dashboard…</p>
+        </div>
       </div>
     );
   }
@@ -520,6 +579,7 @@ export default function Dashboard() {
       {/* Top Navigation Header */}
       <header className="hero-bg px-5 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="Swasthik Salon Logo"
             className="w-10 h-10 rounded-xl object-cover border border-amber-400/40 shadow-sm flex-shrink-0" />
           <div>
@@ -527,7 +587,7 @@ export default function Dashboard() {
             <h1 className="text-white font-bold text-sm">Dashboard</h1>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           <Link href="/instagram-demo" id="view-instagram-demo-link"
             className="text-xs px-3 py-2 rounded-lg font-medium"
             style={{ background: "rgba(236,72,153,0.2)", color: "#f472b6", border: "1px solid rgba(236,72,153,0.3)" }}>
@@ -538,8 +598,53 @@ export default function Dashboard() {
             style={{ background: "rgba(201,168,76,0.2)", color: "#f0d06e", border: "1px solid rgba(201,168,76,0.3)" }}>
             View Landing &rarr;
           </Link>
+          {/* Logged-in user email + Logout */}
+          <div className="flex items-center gap-2 pl-2 border-l" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
+            {userEmail && (
+              <span
+                id="dashboard-user-email"
+                className="text-xs font-medium hidden sm:block"
+                style={{ color: "rgba(255,255,255,0.55)" }}
+                title={userEmail}
+              >
+                {userEmail.length > 24 ? userEmail.slice(0, 22) + "…" : userEmail}
+              </span>
+            )}
+            <button
+              id="logout-btn"
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="text-xs px-3 py-2 rounded-lg font-semibold transition-all"
+              style={{
+                background: loggingOut ? "rgba(239,68,68,0.1)" : "rgba(239,68,68,0.15)",
+                color: loggingOut ? "rgba(252,165,165,0.5)" : "#fca5a5",
+                border: "1px solid rgba(239,68,68,0.25)",
+                cursor: loggingOut ? "not-allowed" : "pointer",
+              }}
+            >
+              {loggingOut ? "Signing out…" : "Logout"}
+            </button>
+          </div>
         </div>
       </header>
+
+      {/* Logout error banner */}
+      {logoutError && (
+        <div
+          id="logout-error-banner"
+          className="px-5 py-2.5 text-sm font-medium flex items-center justify-between"
+          style={{ background: "rgba(239,68,68,0.1)", color: "#fca5a5", borderBottom: "1px solid rgba(239,68,68,0.2)" }}
+        >
+          <span>⚠ {logoutError}</span>
+          <button
+            onClick={() => setLogoutError("")}
+            className="text-xs opacity-60 hover:opacity-100"
+            style={{ background: "none", border: "none", color: "inherit", cursor: "pointer" }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <main className="max-w-7xl mx-auto px-4 py-6">
         
@@ -854,7 +959,7 @@ export default function Dashboard() {
         </div>
 
         <p className="text-center text-xs mt-5" style={{ color: "#9ca3af" }}>
-          All lead and revenue data is stored in your browser&apos;s LocalStorage. Data is private to this device.
+          All lead and revenue data is securely stored in Supabase. Access is protected by Row Level Security.
         </p>
       </main>
 

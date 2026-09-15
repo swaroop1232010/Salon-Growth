@@ -58,5 +58,11 @@ export interface DbLead {
 export interface Service {
   name: string;
   price: number;
+  offerPrice?: number;
+  discountAmount?: number;
+  badge?: string;
+  bonusOffer?: string;
   icon: string;
+  subtitle?: string; // short descriptor shown below the service name in the booking card
+  isSpecial?: boolean;
 }
