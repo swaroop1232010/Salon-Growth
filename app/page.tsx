@@ -241,14 +241,6 @@ export default function Home() {
           voucherText: voucherMsg,
         }),
       }).catch((e) => console.warn("Background voucher notify warning:", e));
-
-      // 2. Automatically launch WhatsApp with the voucher pre-loaded by default!
-      if (typeof window !== "undefined") {
-        setTimeout(() => {
-          const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(voucherMsg)}`;
-          window.open(waUrl, "_blank");
-        }, 500);
-      }
     } catch (err: unknown) {
       setIsSubmitting(false);
       const errorMsg = err instanceof Error ? err.message : "Unable to submit your request right now. Please try again.";
