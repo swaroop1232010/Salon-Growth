@@ -129,27 +129,29 @@ a, button, input, select, textarea {
   animation: pulse-gold 2s ease-in-out infinite;
 }
 
-/* Form input styling */
+/* Form input styling — large, high-contrast & comfortable for poor eyesight */
 .form-input {
   width: 100%;
-  padding: 12px 14px;
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  font-size: 14px;
-  background: rgba(255, 255, 255, 0.05) !important;
+  padding: 14px 18px;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.07) !important;
   color: #ffffff !important;
   outline: none;
   font-family: 'Inter', sans-serif;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.form-input::placeholder { color: #9ca3af; }
+.form-input::placeholder { color: #a1a1aa; font-weight: 500; }
 .form-input:focus {
-  border-color: #c9a84c !important;
-  background: rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 0 0 3px rgba(201,168,76,0.15);
+  border-color: #f0d06e !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 0 0 4px rgba(201,168,76,0.25);
 }
 .form-input.error {
-  border-color: #ef4444 !important;
+  border-color: #f87171 !important;
+  box-shadow: 0 0 0 3px rgba(248,113,113,0.2);
 }
 .form-input:-webkit-autofill,
 .form-input:-webkit-autofill:hover, 

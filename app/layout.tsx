@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "https://swasthikleads.netlify.app"
+    process.env.NEXT_PUBLIC_SITE_URL || "https://swasthikoffers.netlify.app"
   ),
   title: "Swasthik Salon & Boutique — First Visit Special",
   description:

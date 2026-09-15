@@ -54,8 +54,13 @@ export interface DbLead {
   updated_at: string;
 }
 
-// Service
+// Offer Uniqueness Policy
+export type OfferPolicy = "new_customers_only" | "once_per_campaign";
+
+// Service / Offer UI Model
 export interface Service {
+  id?: string;
+  campaignSlug?: string;
   name: string;
   price: number;
   offerPrice?: number;
@@ -65,4 +70,27 @@ export interface Service {
   icon: string;
   subtitle?: string; // short descriptor shown below the service name in the booking card
   isSpecial?: boolean;
+  policy?: OfferPolicy;
+  isActive?: boolean;
+  displayOrder?: number;
+}
+
+// Raw Database Record in Supabase public.offers
+export interface DbOffer {
+  id: string;
+  campaign_slug: string;
+  name: string;
+  price: number;
+  offer_price: number;
+  discount_amount: number;
+  subtitle: string | null;
+  icon: string;
+  badge: string | null;
+  bonus_offer: string | null;
+  is_special: boolean;
+  policy: OfferPolicy;
+  is_active: boolean;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
 }

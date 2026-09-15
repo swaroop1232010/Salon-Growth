@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import { Lead, DbLead, LeadStatus } from "../types";
+import { Lead, DbLead, LeadStatus, Service, DbOffer, OfferPolicy } from "../types";
+import { SERVICES } from "./services";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey =
@@ -133,16 +134,25 @@ export async function getNextReferenceId(): Promise<string> {
 // ─── Lead Operations ──────────────────────────────────────────────────────────
 
 /**
- * Checks whether a phone number has already claimed a first-visit offer.
+ * Checks whether a phone number has already claimed an offer.
+ * Supports both 'new_customers_only' and 'once_per_campaign' policies.
  * Calls the check_phone_claimed RPC function in Supabase if installed.
  */
-export async function checkPhoneClaimed(phone: string): Promise<boolean> {
+export async function checkPhoneClaimed(
+  phone: string,
+  campaign: string = "first-visit-special",
+  policy: OfferPolicy = "new_customers_only"
+): Promise<boolean> {
   if (!isSupabaseConfigured) return false;
   const digits = phone.replace(/\D/g, "").slice(-10);
   if (digits.length < 10) return false;
 
   try {
-    const { data, error } = await supabasePublic.rpc("check_phone_claimed", { p_phone: digits });
+    const { data, error } = await supabasePublic.rpc("check_phone_claimed", {
+      p_phone: digits,
+      p_campaign: campaign,
+      p_policy: policy,
+    });
     if (!error && typeof data === "boolean") {
       return data;
     }
@@ -155,7 +165,7 @@ export async function checkPhoneClaimed(phone: string): Promise<boolean> {
 /**
  * Inserts a new lead into public.leads.
  * Uses supabasePublic to guarantee execution under anonymous role without staff session conflicts.
- * Prevents multiple claims with the same phone number.
+ * Prevents multiple claims with the same phone number according to offer policy.
  */
 export async function insertLead(leadData: {
   name: string;
@@ -169,6 +179,7 @@ export async function insertLead(leadData: {
   source: string;
   medium: string;
   campaign: string;
+  policy?: OfferPolicy;
   status?: LeadStatus;
 }): Promise<Lead> {
   if (!isSupabaseConfigured) {
@@ -176,11 +187,16 @@ export async function insertLead(leadData: {
   }
 
   const cleanPhone = leadData.phone.replace(/\D/g, "").slice(-10);
+  const campaign = leadData.campaign || "first-visit-special";
+  const policy = leadData.policy || "new_customers_only";
 
-  // Proactive check if phone was already claimed
-  const isAlreadyClaimed = await checkPhoneClaimed(cleanPhone);
+  // Proactive check if phone was already claimed for this policy/campaign
+  const isAlreadyClaimed = await checkPhoneClaimed(cleanPhone, campaign, policy);
   if (isAlreadyClaimed) {
-    throw new Error("This mobile number has already claimed this offer. Only 1 offer is allowed per customer.");
+    const msg = policy === "once_per_campaign"
+      ? "This mobile number has already claimed this campaign offer. Only 1 claim allowed per campaign."
+      : "This mobile number has already claimed this offer. Only 1 offer is allowed per customer.";
+    throw new Error(msg);
   }
 
   let refId = await getNextReferenceId();
@@ -260,17 +276,53 @@ export async function fetchLeads(): Promise<Lead[]> {
 
 /**
  * Updates the status of a lead.
- * Requires authenticated session (RLS: "auth_update_leads" policy).
+ * Supports updating by primary key UUID (dbId) or reference_id.
+ * Falls back to RPC update_lead_status if direct update encounters permission/matching issues.
  */
-export async function updateLeadStatus(idOrRef: string, status: LeadStatus): Promise<void> {
+export async function updateLeadStatus(
+  idOrRef: string,
+  status: LeadStatus,
+  dbId?: string
+): Promise<void> {
   if (!isSupabaseConfigured) throw new Error("Supabase is not configured.");
 
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrRef);
-  const { error } = isUuid
-    ? await supabase.from("leads").update({ status }).eq("id", idOrRef)
-    : await supabase.from("leads").update({ status }).eq("reference_id", idOrRef);
+  const targetId = dbId || idOrRef;
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
 
-  if (error) throw new Error(error.message);
+  // 1. Try updating by UUID primary key (if UUID)
+  if (isUuid) {
+    const { data, error } = await supabase
+      .from("leads")
+      .update({ status })
+      .eq("id", targetId)
+      .select("id, status");
+
+    if (!error && data && data.length > 0) return;
+  }
+
+  // 2. Try updating by reference_id
+  const refTarget = idOrRef || targetId;
+  const { data: refData, error: refError } = await supabase
+    .from("leads")
+    .update({ status })
+    .eq("reference_id", refTarget)
+    .select("id, status");
+
+  if (!refError && refData && refData.length > 0) return;
+
+  // 3. Fallback: try RPC function (SECURITY DEFINER)
+  try {
+    const { data: rpcSuccess, error: rpcError } = await supabase.rpc("update_lead_status", {
+      p_id: targetId,
+      p_status: status,
+    });
+    if (!rpcError && rpcSuccess) return;
+  } catch {
+    // RPC not installed yet, proceed to throw clear error
+  }
+
+  if (refError) throw new Error(refError.message);
+  throw new Error("Could not update lead status. Please verify your permissions or run the latest database schema.");
 }
 
 /**
@@ -280,31 +332,206 @@ export async function updateLeadStatus(idOrRef: string, status: LeadStatus): Pro
 export async function completeLeadVisit(
   idOrRef: string,
   actualVisitDate: string,
-  billAmount: number
+  billAmount: number,
+  dbId?: string
 ): Promise<void> {
   if (!isSupabaseConfigured) throw new Error("Supabase is not configured.");
 
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrRef);
-  const update = { status: "Completed", actual_visit_date: toPostgresDate(actualVisitDate), bill_amount: billAmount };
-  const { error } = isUuid
-    ? await supabase.from("leads").update(update).eq("id", idOrRef)
-    : await supabase.from("leads").update(update).eq("reference_id", idOrRef);
+  const targetId = dbId || idOrRef;
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
+  const updatePayload = {
+    status: "Completed",
+    actual_visit_date: toPostgresDate(actualVisitDate),
+    bill_amount: billAmount,
+  };
 
-  if (error) throw new Error(error.message);
+  if (isUuid) {
+    const { data, error } = await supabase
+      .from("leads")
+      .update(updatePayload)
+      .eq("id", targetId)
+      .select("id");
+    if (!error && data && data.length > 0) return;
+  }
+
+  const { data: refData, error: refError } = await supabase
+    .from("leads")
+    .update(updatePayload)
+    .eq("reference_id", idOrRef)
+    .select("id");
+
+  if (!refError && refData && refData.length > 0) return;
+
+  if (refError) throw new Error(refError.message);
+  throw new Error("Could not complete lead visit. Please verify lead ID.");
 }
 
 /**
  * Marks a lead's follow-up as sent and records the timestamp.
  * Requires authenticated session (RLS: "auth_update_leads" policy).
  */
-export async function markLeadFollowUpSent(idOrRef: string): Promise<void> {
+export async function markLeadFollowUpSent(idOrRef: string, dbId?: string): Promise<void> {
   if (!isSupabaseConfigured) throw new Error("Supabase is not configured.");
 
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrRef);
-  const update = { status: "Follow-up Sent", follow_up_sent_at: new Date().toISOString() };
-  const { error } = isUuid
-    ? await supabase.from("leads").update(update).eq("id", idOrRef)
-    : await supabase.from("leads").update(update).eq("reference_id", idOrRef);
+  const targetId = dbId || idOrRef;
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
+  const updatePayload = {
+    status: "Follow-up Sent",
+    follow_up_sent_at: new Date().toISOString(),
+  };
 
+  if (isUuid) {
+    const { data, error } = await supabase
+      .from("leads")
+      .update(updatePayload)
+      .eq("id", targetId)
+      .select("id");
+    if (!error && data && data.length > 0) return;
+  }
+
+  const { data: refData, error: refError } = await supabase
+    .from("leads")
+    .update(updatePayload)
+    .eq("reference_id", idOrRef)
+    .select("id");
+
+  if (!refError && refData && refData.length > 0) return;
+
+  if (refError) throw new Error(refError.message);
+  throw new Error("Could not mark follow up as sent.");
+}
+
+// ─── Offer Operations (Admin Managed) ────────────────────────────────────────
+
+/**
+ * Maps a Supabase public.offers row to the Service UI model.
+ */
+export function fromDbOffer(row: DbOffer): Service {
+  return {
+    id: row.id,
+    campaignSlug: row.campaign_slug,
+    name: row.name,
+    price: Number(row.price),
+    offerPrice: Number(row.offer_price),
+    discountAmount: Number(row.discount_amount),
+    subtitle: row.subtitle || undefined,
+    icon: row.icon || "scissors",
+    badge: row.badge || undefined,
+    bonusOffer: row.bonus_offer || undefined,
+    isSpecial: row.is_special,
+    policy: row.policy || "new_customers_only",
+    isActive: row.is_active,
+    displayOrder: row.display_order,
+  };
+}
+
+/**
+ * Fetches active offers for the landing page.
+ * Uses supabasePublic to avoid auth conflicts.
+ * Falls back to built-in SERVICES if table is not yet seeded or offline.
+ */
+export async function fetchActiveOffers(): Promise<Service[]> {
+  if (!isSupabaseConfigured) return SERVICES;
+
+  try {
+    const { data, error } = await supabasePublic
+      .from("offers")
+      .select("*")
+      .eq("is_active", true)
+      .order("display_order", { ascending: true });
+
+    if (!error && data && data.length > 0) {
+      return (data as DbOffer[]).map(fromDbOffer);
+    }
+  } catch {
+    // Graceful fallback to static defaults
+  }
+  return SERVICES;
+}
+
+/**
+ * Fetches all offers (active + inactive) for the staff dashboard.
+ * Requires authenticated session.
+ */
+export async function fetchAllOffersForAdmin(): Promise<Service[]> {
+  if (!isSupabaseConfigured) return SERVICES;
+
+  try {
+    const { data, error } = await supabase
+      .from("offers")
+      .select("*")
+      .order("display_order", { ascending: true });
+
+    if (!error && data && data.length > 0) {
+      return (data as DbOffer[]).map(fromDbOffer);
+    }
+  } catch {
+    // Graceful fallback to static defaults
+  }
+  return SERVICES;
+}
+
+/**
+ * Updates an offer in public.offers.
+ * Requires authenticated session.
+ */
+export async function updateOffer(id: string, updates: Partial<Service>): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error("Supabase is not configured.");
+
+  const payload: Record<string, unknown> = {};
+  if (updates.name !== undefined) payload.name = updates.name.trim();
+  if (updates.price !== undefined) payload.price = Number(updates.price);
+  if (updates.offerPrice !== undefined) payload.offer_price = Number(updates.offerPrice);
+  if (updates.discountAmount !== undefined) payload.discount_amount = Number(updates.discountAmount);
+  if (updates.subtitle !== undefined) payload.subtitle = updates.subtitle?.trim() || null;
+  if (updates.icon !== undefined) payload.icon = updates.icon;
+  if (updates.badge !== undefined) payload.badge = updates.badge || null;
+  if (updates.bonusOffer !== undefined) payload.bonus_offer = updates.bonusOffer || null;
+  if (updates.isSpecial !== undefined) payload.is_special = updates.isSpecial;
+  if (updates.policy !== undefined) payload.policy = updates.policy;
+  if (updates.isActive !== undefined) payload.is_active = updates.isActive;
+  if (updates.displayOrder !== undefined) payload.display_order = updates.displayOrder;
+  if (updates.campaignSlug !== undefined) payload.campaign_slug = updates.campaignSlug;
+
+  const { error } = await supabase.from("offers").update(payload).eq("id", id);
   if (error) throw new Error(error.message);
 }
+
+/**
+ * Creates a new offer in public.offers.
+ * Requires authenticated session.
+ */
+export async function createOffer(offer: Omit<Service, "id">): Promise<Service> {
+  if (!isSupabaseConfigured) throw new Error("Supabase is not configured.");
+
+  const payload = {
+    campaign_slug: offer.campaignSlug || "first-visit-special",
+    name: offer.name.trim(),
+    price: Number(offer.price),
+    offer_price: Number(offer.offerPrice ?? Math.max(0, offer.price - (offer.discountAmount ?? 200))),
+    discount_amount: Number(offer.discountAmount ?? 200),
+    subtitle: offer.subtitle?.trim() || null,
+    icon: offer.icon || "scissors",
+    badge: offer.badge || null,
+    bonus_offer: offer.bonusOffer || null,
+    is_special: Boolean(offer.isSpecial),
+    policy: offer.policy || "new_customers_only",
+    is_active: offer.isActive !== undefined ? offer.isActive : true,
+    display_order: offer.displayOrder ?? 99,
+  };
+
+  const { data, error } = await supabase.from("offers").insert([payload]).select().single();
+  if (error) throw new Error(error.message);
+  return fromDbOffer(data as DbOffer);
+}
+
+/**
+ * Deletes an offer by ID from public.offers.
+ * Requires authenticated session.
+ */
+export async function deleteOffer(id: string): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.from("offers").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
