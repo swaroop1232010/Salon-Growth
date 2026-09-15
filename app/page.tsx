@@ -131,11 +131,7 @@ export default function Home() {
     if (!formData.name.trim() || formData.name.trim().length < 2)
       e.name = "Please enter your full name (min 2 characters).";
     if (!/^[6-9]\d{9}$/.test(formData.phone))
-      e.phone = "Enter a valid 10-digit Indian mobile number.";
-    if (!formData.preferredDate)
-      e.preferredDate = "Please select your preferred visit date.";
-    if (!formData.preferredTime)
-      e.preferredTime = "Please select a preferred time slot.";
+      e.phone = "Enter a valid 10-digit WhatsApp mobile number to receive your offer voucher.";
     return e;
   }
 
@@ -155,33 +151,27 @@ export default function Home() {
       const campaign = utmData.campaign || activeSvc.campaignSlug || "first-visit-special";
       const policy = activeSvc.policy || "new_customers_only";
 
-      // 1. Instant client-side check
-      if (typeof window !== "undefined") {
-        const localKey = policy === "once_per_campaign"
-          ? `sgs_claimed_${campaign}_phones`
-          : "sgs_claimed_phones";
-        const locallyClaimed = JSON.parse(localStorage.getItem(localKey) || "[]");
-        if (locallyClaimed.includes(cleanPhone)) {
-          const msg = policy === "once_per_campaign"
-            ? "This mobile number has already claimed this campaign offer."
-            : "This mobile number has already claimed this offer. Only 1 offer is allowed per customer.";
-          setErrors(prev => ({ ...prev, phone: msg }));
-          setSubmitError(msg);
-          setIsSubmitting(false);
-          return;
-        }
-      }
-
-      // 2. Real-time DB lookup
+      // Real-time DB lookup (single source of truth)
       const isAlreadyClaimed = await checkPhoneClaimed(cleanPhone, campaign, policy);
       if (isAlreadyClaimed) {
         const msg = policy === "once_per_campaign"
-          ? "This mobile number has already claimed this campaign offer."
-          : "This mobile number has already claimed this offer. Only 1 offer is allowed per customer.";
+          ? "This WhatsApp number has already claimed this campaign offer."
+          : "This WhatsApp number has already claimed this offer. Only 1 offer is allowed per customer.";
         setErrors(prev => ({ ...prev, phone: msg }));
         setSubmitError(msg);
         setIsSubmitting(false);
         return;
+      } else {
+        // Number is NOT in DB (e.g. was deleted or never booked) — prune any stale localStorage entries
+        if (typeof window !== "undefined") {
+          try {
+            const keys = ["sgs_claimed_phones", `sgs_claimed_${campaign}_phones`];
+            keys.forEach(k => {
+              const arr = JSON.parse(localStorage.getItem(k) || "[]").filter((x: string) => x !== cleanPhone);
+              localStorage.setItem(k, JSON.stringify(arr));
+            });
+          } catch {}
+        }
       }
 
       const lead = await insertLead({
@@ -215,6 +205,50 @@ export default function Home() {
       setSubmittedLead(lead);
       setIsSubmitting(false);
       setStep("success");
+
+      // Auto-dispatch voucher to customer's WhatsApp
+      const isStudent = (selectedService || activeSvc.name).toLowerCase().includes("student");
+      const offerLabelText = isStudent ? "Flat 40% OFF + 10% Review Discount" : `Flat ₹${discountAmount} OFF`;
+      const dateText = formData.preferredDate && formData.preferredDate !== "-"
+        ? `${formData.preferredDate}${formData.preferredTime ? ` at ${formData.preferredTime}` : ""}`
+        : "Flexible (To be confirmed)";
+
+      const mapsUrl = "https://maps.google.com/?q=CXHF%2B82V,+Ravindra+Nagar,+Nellore,+Andhra+Pradesh+524003";
+      const voucherMsg =
+        "✨ *SWASTHIK SALON & BOUTIQUE* ✨\n" +
+        "🎉 *YOUR EXCLUSIVE OFFER VOUCHER* 🎉\n\n" +
+        `Dear *${formData.name.trim()}*,\n` +
+        "Congratulations! Your exclusive salon offer voucher has been confirmed & locked in.\n\n" +
+        `🔖 *Booking Reference:* ${lead.id}\n` +
+        `💇 *Service:* ${selectedService || activeSvc.name}\n` +
+        `💰 *Offer:* ${offerLabelText}\n` +
+        `📅 *Date & Time:* ${dateText}\n\n` +
+        "📍 *Salon Location:*\n" +
+        "Swasthik Salon & Boutique, CXHF+82V, Ravindra Nagar, Nellore, Andhra Pradesh 524003\n\n" +
+        `🗺️ *Tap to Open Google Maps & Navigate:*\n${mapsUrl}\n\n` +
+        "✅ *Zero Advance Required:* Pay at the salon counter after your service.\n\n" +
+        "Please show this voucher at the reception to claim your discount. See you soon! ✨";
+
+      // 1. Notify server endpoint (handles webhooks / automated gateways if configured)
+      fetch("/api/leads/send-voucher", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: cleanPhone,
+          name: formData.name.trim(),
+          service: selectedService || activeSvc.name,
+          referenceId: lead.id,
+          voucherText: voucherMsg,
+        }),
+      }).catch((e) => console.warn("Background voucher notify warning:", e));
+
+      // 2. Automatically launch WhatsApp with the voucher pre-loaded by default!
+      if (typeof window !== "undefined") {
+        setTimeout(() => {
+          const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(voucherMsg)}`;
+          window.open(waUrl, "_blank");
+        }, 500);
+      }
     } catch (err: unknown) {
       setIsSubmitting(false);
       const errorMsg = err instanceof Error ? err.message : "Unable to submit your request right now. Please try again.";
@@ -650,15 +684,21 @@ export default function Home() {
               {errors.name && <p className="text-[11px] sm:text-xs font-bold text-red-400 mt-0.5">{errors.name}</p>}
             </div>
 
-            {/* Mobile Number */}
+            {/* WhatsApp Mobile Number */}
             <div>
-              <label className="block text-xs sm:text-sm font-black uppercase tracking-wider text-amber-300 mb-1">
-                Mobile Number *
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs sm:text-sm font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                  <span>WhatsApp Mobile Number *</span>
+                </label>
+                <span className="text-[10px] sm:text-xs font-bold text-emerald-300 bg-emerald-950/70 border border-emerald-500/40 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse" />
+                  WhatsApp Active
+                </span>
+              </div>
               <input
                 id="input-phone"
                 type="tel"
-                placeholder="10-digit mobile number"
+                placeholder="10-digit WhatsApp number (e.g. 9876543210)"
                 maxLength={10}
                 value={formData.phone}
                 onChange={(e) => {
@@ -674,41 +714,44 @@ export default function Home() {
                     const campaign = utmData.campaign || activeSvc.campaignSlug || "first-visit-special";
                     const policy = activeSvc.policy || "new_customers_only";
 
-                    if (typeof window !== "undefined") {
-                      const localKey = policy === "once_per_campaign"
-                        ? `sgs_claimed_${campaign}_phones`
-                        : "sgs_claimed_phones";
-                      const local = JSON.parse(localStorage.getItem(localKey) || "[]");
-                      if (local.includes(p)) {
-                        const msg = policy === "once_per_campaign"
-                          ? "This mobile number has already claimed this campaign offer."
-                          : "This mobile number has already claimed this offer.";
-                        setErrors(prev => ({ ...prev, phone: msg }));
-                        return;
-                      }
-                    }
                     const isClaimed = await checkPhoneClaimed(p, campaign, policy);
                     if (isClaimed) {
                       const msg = policy === "once_per_campaign"
-                        ? "This mobile number has already claimed this campaign offer."
-                        : "This mobile number has already claimed this offer.";
+                        ? "This WhatsApp number has already claimed this campaign offer."
+                        : "This WhatsApp number has already claimed this offer.";
                       setErrors(prev => ({ ...prev, phone: msg }));
+                    } else {
+                      // Number is NOT in the database! Prune from any old localStorage cache and clear error
+                      if (typeof window !== "undefined") {
+                        try {
+                          const keys = ["sgs_claimed_phones", `sgs_claimed_${campaign}_phones`];
+                          keys.forEach(k => {
+                            const arr = JSON.parse(localStorage.getItem(k) || "[]").filter((x: string) => x !== p);
+                            localStorage.setItem(k, JSON.stringify(arr));
+                          });
+                        } catch {}
+                      }
+                      setErrors(prev => {
+                        const next = { ...prev };
+                        delete next.phone;
+                        return next;
+                      });
                     }
                   }
                 }}
                 className={`form-input text-sm sm:text-base font-bold tracking-wider py-2.5 sm:py-3.5 px-3 sm:px-4 rounded-xl ${errors.phone ? "error" : ""}`}
               />
-              <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 flex items-center gap-1 font-medium">
-                <span>🔒</span> 1 offer per customer &bull; Mobile number cannot be reused.
+              <p className="text-[10px] sm:text-xs text-emerald-400 mt-1 flex items-center gap-1 font-semibold">
+                <span>📲</span> Voucher &amp; booking details will be sent directly to this WhatsApp number.
               </p>
               {errors.phone && <p className="text-[11px] sm:text-xs font-bold text-red-400 mt-0.5">{errors.phone}</p>}
             </div>
 
-            {/* Date & Time Grid — min-w-0 prevents any mobile overlapping */}
+            {/* Date & Time Grid — Optional */}
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <div className="min-w-0">
-                <label className="block text-xs sm:text-sm font-black uppercase tracking-wider text-amber-300 mb-1 truncate">
-                  Visit Date *
+                <label className="block text-xs sm:text-sm font-bold uppercase tracking-wider text-gray-300 mb-1 truncate">
+                  Visit Date <span className="text-gray-400 font-normal normal-case">(Optional)</span>
                 </label>
                 <input
                   id="input-date"
@@ -717,20 +760,20 @@ export default function Home() {
                   suppressHydrationWarning
                   value={formData.preferredDate}
                   onChange={(e) => { setFormData({ ...formData, preferredDate: e.target.value }); setErrors({ ...errors, preferredDate: "" }); }}
-                  className={`form-input text-xs sm:text-base font-semibold py-2 sm:py-3 px-2 sm:px-3 rounded-xl w-full min-w-0 ${errors.preferredDate ? "error" : ""}`}
+                  className="form-input text-xs sm:text-base font-semibold py-2 sm:py-3 px-2 sm:px-3 rounded-xl w-full min-w-0"
                 />
-                {errors.preferredDate && <p className="text-[10px] sm:text-xs font-bold text-red-400 mt-0.5">{errors.preferredDate}</p>}
               </div>
 
               <div className="min-w-0">
-                <label className="block text-xs sm:text-sm font-black uppercase tracking-wider text-amber-300 mb-1 truncate">
-                  Time Slot *
+                <label className="block text-xs sm:text-sm font-bold uppercase tracking-wider text-gray-300 mb-1 truncate">
+                  Time Slot <span className="text-gray-400 font-normal normal-case">(Optional)</span>
                 </label>
                 <select
                   id="input-time"
                   value={formData.preferredTime}
                   onChange={(e) => { setFormData({ ...formData, preferredTime: e.target.value }); setErrors({ ...errors, preferredTime: "" }); }}
-                  className={`form-input text-xs sm:text-base font-semibold py-2 sm:py-3 px-2 sm:px-3 rounded-xl w-full min-w-0 ${errors.preferredTime ? "error" : ""}`}>
+                  className="form-input text-xs sm:text-base font-semibold py-2 sm:py-3 px-2 sm:px-3 rounded-xl w-full min-w-0">
+                  <option value="" style={{ background: "#1a1a2e", color: "#ffffff" }}>Flexible / Any Time</option>
                   {TIME_SLOTS.map((t) => (
                     <option key={t} value={t} style={{ background: "#1a1a2e", color: "#ffffff" }}>{t}</option>
                   ))}
@@ -832,7 +875,11 @@ export default function Home() {
               <div className="flex justify-between py-1 border-b border-white/10">
                 <span className="text-gray-400 font-medium">Date &amp; Time</span>
                 <span className="font-bold text-amber-300">
-                  {formatDateSafe(submittedLead.preferredDate)} at {submittedLead.preferredTime}
+                  {submittedLead.preferredDate && submittedLead.preferredDate !== "-"
+                    ? `${formatDateSafe(submittedLead.preferredDate)}${submittedLead.preferredTime ? ` at ${submittedLead.preferredTime}` : ""}`
+                    : (submittedLead.preferredTime && submittedLead.preferredTime !== "Flexible"
+                        ? `Flexible Date (${submittedLead.preferredTime})`
+                        : "Flexible (Confirmed via WhatsApp)")}
                 </span>
               </div>
               <div className="flex justify-between py-1">
@@ -843,22 +890,67 @@ export default function Home() {
           </div>
 
           {/* Immediate Next Step Message */}
-          <div className="w-full text-center py-2.5 sm:py-3.5 px-3 sm:px-4 rounded-xl sm:rounded-2xl mb-3 sm:mb-4 text-xs sm:text-sm font-medium leading-relaxed"
+          <div className="w-full text-center py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl sm:rounded-2xl mb-2.5 sm:mb-3.5 text-xs sm:text-sm font-medium leading-relaxed"
             style={{ background: "rgba(16,185,129,0.12)", color: "#34d399", border: "1px solid rgba(16,185,129,0.25)" }}>
             {isStudentOffer ? (
               <span>
                 Show your Student ID for <strong>Flat 40% OFF</strong>, plus leave a quick Google review at your visit to unlock the <strong>extra 10% OFF</strong>!
               </span>
             ) : (
-              <span>Our team will call you at <strong>{submittedLead.phone}</strong> to welcome you!</span>
+              <span>We have saved your voucher for WhatsApp number <strong>+91 {submittedLead.phone}</strong>!</span>
             )}
           </div>
+
+          {/* WhatsApp Voucher Button */}
+          <a
+            id="whatsapp-voucher-btn"
+            href={`https://wa.me/91${submittedLead.phone}?text=${encodeURIComponent(
+              `✨ *SWASTHIK SALON & BOUTIQUE* ✨\n` +
+              `🎉 *YOUR EXCLUSIVE OFFER VOUCHER* 🎉\n\n` +
+              `Dear *${submittedLead.name}*,\n` +
+              `Congratulations! Your offer voucher has been confirmed & locked in.\n\n` +
+              `🔖 *Booking Reference:* ${submittedLead.id}\n` +
+              `💇 *Service:* ${submittedLead.service}\n` +
+              `💰 *Offer:* ${offerLabel}\n` +
+              `📅 *Date & Time:* ${submittedLead.preferredDate && submittedLead.preferredDate !== "-" ? `${formatDateSafe(submittedLead.preferredDate)}${submittedLead.preferredTime ? ` at ${submittedLead.preferredTime}` : ""}` : "Flexible (To be confirmed)"}\n\n` +
+              `📍 *Salon Location:*\n` +
+              `Swasthik Salon & Boutique, CXHF+82V, Ravindra Nagar, Nellore, Andhra Pradesh 524003\n\n` +
+              `🗺️ *Tap to Open Google Maps & Navigate:*\n` +
+              `https://maps.google.com/?q=CXHF%2B82V,+Ravindra+Nagar,+Nellore,+Andhra+Pradesh+524003\n\n` +
+              `✅ *Zero Advance:* Pay at the salon counter after your service.\n\n` +
+              `Please show this message at the reception during your visit. See you soon! ✨`
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full text-sm sm:text-base font-black py-3 sm:py-3.5 rounded-xl sm:rounded-2xl shadow-lg flex items-center justify-center gap-2 mb-2 cursor-pointer text-white transition-all hover:opacity-95"
+            style={{
+              background: "linear-gradient(135deg, #25D366, #128C7E)",
+              boxShadow: "0 6px 20px rgba(37,211,102,0.35)",
+            }}
+          >
+            <span>📲</span>
+            <span>Receive / Open Voucher on WhatsApp</span>
+            <span>&rarr;</span>
+          </a>
+
+          {/* Direct Google Maps Navigation Button */}
+          <a
+            id="maps-navigation-btn"
+            href="https://maps.google.com/?q=CXHF%2B82V,+Ravindra+Nagar,+Nellore,+Andhra+Pradesh+524003"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full text-xs sm:text-sm font-black py-2.5 sm:py-3 rounded-xl flex items-center justify-center gap-2 mb-2.5 cursor-pointer text-amber-200 border border-amber-400/40 bg-amber-400/10 hover:bg-amber-400/20 transition-all"
+          >
+            <span>📍</span>
+            <span>Navigate to Salon on Google Maps</span>
+            <span>&rarr;</span>
+          </a>
 
           {/* Single Return Button — Arrow never wraps */}
           <button
             id="back-home-btn"
             onClick={goHome}
-            className="btn-secondary w-full text-xs sm:text-base font-black py-3 rounded-xl flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
+            className="btn-secondary w-full text-xs sm:text-base font-black py-2.5 sm:py-3 rounded-xl flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
             style={{ width: "100%", borderColor: "rgba(201,168,76,0.4)", color: "#f0d06e" }}>
             <span>&larr;</span>
             <span>Back to Home</span>
