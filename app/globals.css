@@ -129,25 +129,39 @@ a, button, input, select, textarea {
   animation: pulse-gold 2s ease-in-out infinite;
 }
 
-/* Form input styling — large, high-contrast & comfortable for poor eyesight */
+/* Form input styling — large, high-contrast & comfortable for poor eyesight, responsive for mobile */
 .form-input {
   width: 100%;
-  padding: 14px 18px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 11px 13px;
   border: 2px solid rgba(255, 255, 255, 0.22);
-  border-radius: 14px;
-  font-size: 16px;
+  border-radius: 12px;
+  font-size: 15px;
   font-weight: 600;
   background: rgba(255, 255, 255, 0.07) !important;
   color: #ffffff !important;
   outline: none;
   font-family: 'Inter', sans-serif;
+  box-sizing: border-box;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+@media (min-width: 640px) {
+  .form-input {
+    padding: 13px 18px;
+    font-size: 16px;
+    border-radius: 14px;
+  }
+}
+input[type="date"].form-input {
+  min-width: 0;
+  max-width: 100%;
 }
 .form-input::placeholder { color: #a1a1aa; font-weight: 500; }
 .form-input:focus {
   border-color: #f0d06e !important;
   background: rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 0 0 4px rgba(201,168,76,0.25);
+  box-shadow: 0 0 0 3px rgba(201,168,76,0.25);
 }
 .form-input.error {
   border-color: #f87171 !important;
