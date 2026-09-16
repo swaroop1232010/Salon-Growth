@@ -273,38 +273,48 @@ export default function Home() {
   // 1. LANDING PAGE
   // ══════════════════════════════════════════════════════════════════════════════
   if (step === "landing") {
+    const activeSvc = allServices.find(s => s.name === selectedService) || allServices[0];
+    const isStudent = activeSvc.name === studentOffer.name;
+
     return (
-      <main className="h-[100dvh] max-h-[100dvh] overflow-y-auto lg:overflow-hidden flex flex-col justify-between" style={{ background: "#0f0f1a" }}>
+      <main className="min-h-dvh flex flex-col justify-between relative overflow-x-hidden pb-28 sm:pb-8" style={{ background: "#0c0c16" }}>
+        
+        {/* Background Ambient Glows */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+          <div className="ambient-glow-1 absolute -top-28 -left-28 w-80 h-80 rounded-full bg-amber-500/12 blur-[110px]" />
+          <div className="ambient-glow-2 absolute top-1/3 -right-28 w-88 h-88 rounded-full bg-purple-600/12 blur-[125px]" />
+          <div className="ambient-glow-1 absolute -bottom-24 left-1/3 w-80 h-80 rounded-full bg-amber-400/8 blur-[100px]" />
+        </div>
 
         {/* Top bar */}
         <div
-          className="flex-shrink-0 px-4 py-2 sm:px-6 sm:py-2.5 flex items-center justify-between gap-2"
-          style={{ background: "rgba(201,168,76,0.08)", borderBottom: "1px solid rgba(201,168,76,0.15)" }}
+          className="relative z-10 flex-shrink-0 px-4 py-2.5 sm:px-6 sm:py-3 flex items-center justify-between gap-2"
+          style={{ background: "rgba(20, 20, 35, 0.85)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(201,168,76,0.18)" }}
         >
-          {/* Left — logo + name (never wraps) */}
+          {/* Left — logo + name */}
           <div className="flex items-center gap-2 min-w-0">
             <img
               src="/logo.png"
               alt="Swasthik Salon &amp; Boutique Logo"
               className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border border-amber-400/40 shadow-sm flex-shrink-0"
             />
-            <span className="text-[11px] sm:text-xs font-bold tracking-wider text-amber-300 whitespace-nowrap leading-tight">
+            <span className="text-[11px] sm:text-xs font-black tracking-wider text-amber-300 whitespace-nowrap leading-tight">
               SWASTHIK SALON &amp; BOUTIQUE
             </span>
           </div>
           {/* Right — rating (hidden on mobile) + Call button */}
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <div
-              className="hidden sm:block text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
+              className="hidden sm:block text-[11px] font-bold px-2.5 py-0.5 rounded-full"
               style={{ background: "rgba(201,168,76,0.15)", color: "#f0d06e", border: "1px solid rgba(201,168,76,0.25)" }}
             >
-              &#9733; 4.9 Rated
+              &#9733; 4.9 Rated (8.4k+ Reviews)
             </div>
             <a
               href="tel:+919110365226"
               id="customer-call-btn"
-              className="flex items-center gap-1 text-[11px] sm:text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-all whitespace-nowrap"
-              style={{ background: "rgba(255,255,255,0.08)", color: "#ffffff", border: "1px solid rgba(255,255,255,0.15)" }}
+              className="flex items-center gap-1 text-[11px] sm:text-xs font-bold px-3 py-1.5 rounded-xl transition-all whitespace-nowrap active:scale-95 cursor-pointer"
+              style={{ background: "rgba(255,255,255,0.08)", color: "#ffffff", border: "1px solid rgba(255,255,255,0.18)" }}
             >
               &#128222;
               <span className="sm:inline">Call Salon</span>
@@ -312,23 +322,25 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Responsive Content Container */}
+        <div className="relative z-10 flex-1 flex flex-col lg:flex-row max-w-6xl mx-auto w-full items-center justify-between px-3 sm:px-6 lg:px-8 py-2 lg:py-6">
 
-        {/* Responsive Content Container - Non-scrollable on Desktop and Mobile */}
-        <div className="flex-1 flex flex-col lg:flex-row max-w-6xl mx-auto w-full items-center justify-between px-3 sm:px-6 lg:px-8 py-1 lg:py-0 overflow-hidden">
-
-          {/* MOBILE ONLY Compact Top Hero Header (Replaces tall 350px block so mobile is 100% non-scrollable) */}
-          <div className="lg:hidden w-full px-2 pt-1 pb-1 text-center flex flex-col items-center flex-shrink-0">
-            <h1 className="text-xl sm:text-2xl font-black text-white leading-tight tracking-tight">
-              GET <span className="gold-text">₹200 OFF</span> FIRST VISIT
+          {/* MOBILE ONLY Compact Animated Top Hero Header */}
+          <div className="lg:hidden w-full px-2 pt-1 pb-2 text-center flex flex-col items-center flex-shrink-0 animate-fadeInUp">
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-400/15 border border-amber-400/35 text-amber-300 mb-1.5 shadow-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+              First Visit Privilege • Nellore
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight tracking-tight">
+              GET <span className="gold-text">₹200 OFF</span> TODAY
             </h1>
-            <p className="text-[11px] font-semibold text-purple-200 mt-0.5">
-              🎓 Students: <strong className="text-amber-300">Flat 40% OFF</strong> + <strong className="text-amber-300">10% Extra</strong> on Review
+            <p className="text-[11px] font-semibold text-purple-200 mt-0.5 flex items-center justify-center gap-1">
+              <span>🎓</span> Students: <strong className="text-amber-300">Flat 40% OFF</strong> + <strong className="text-amber-300">10% Extra</strong> on Review
             </p>
           </div>
 
-          {/* DESKTOP ONLY: Full Rich Hero Offer (Side-by-side with services) */}
-          <div className="hidden lg:flex lg:flex-1 flex-col justify-center px-6 lg:px-8 lg:py-6 max-w-xl">
-            {/* Header Badge */}
+          {/* DESKTOP ONLY: Full Rich Hero Offer */}
+          <div className="hidden lg:flex lg:flex-1 flex-col justify-center px-6 lg:px-8 lg:py-6 max-w-xl animate-fadeInUp">
             <div className="flex items-center gap-2.5 mb-2.5">
               <img
                 src="/logo.png"
@@ -336,11 +348,11 @@ export default function Home() {
                 className="w-11 h-11 rounded-full object-cover border-2 border-amber-400/50 shadow-md flex-shrink-0"
               />
               <div
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
                 style={{ background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.3)", color: "#f0d06e" }}
               >
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f0d06e", display: "inline-block" }} />
-                FIRST VISIT SPECIAL
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f0d06e", display: "inline-block" }} className="animate-pulse" />
+                FIRST VISIT SPECIAL PRIVILEGE
               </div>
             </div>
 
@@ -352,54 +364,54 @@ export default function Home() {
               <br />YOUR FIRST VISIT
             </h1>
 
-            <p className="text-sm text-gray-400 mb-3 max-w-md leading-relaxed">
-              Select your service below to claim your &#8377;200 discount. No payment required.
+            <p className="text-sm text-gray-300 mb-3 max-w-md leading-relaxed">
+              Select your service to lock your instant &#8377;200 voucher. Zero advance required, pay at salon counter.
             </p>
 
             {/* Students offer simple line */}
             <div
-              className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs max-w-md mb-4"
+              className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs max-w-md mb-4"
               style={{
-                background: "linear-gradient(135deg, rgba(147,51,234,0.14), rgba(201,168,76,0.08))",
-                border: "1px solid rgba(168,85,247,0.3)",
+                background: "linear-gradient(135deg, rgba(147,51,234,0.18), rgba(201,168,76,0.1))",
+                border: "1px solid rgba(168,85,247,0.35)",
                 color: "#e9d5ff",
               }}
             >
               <span className="text-base flex-shrink-0">&#127891;</span>
               <span className="leading-tight">
-                <strong className="text-white">Students:</strong> Get <strong className="text-amber-300">Flat 40% OFF</strong> with ID + <strong className="text-amber-300">10% Extra</strong> on Google Review!
+                <strong className="text-white">College Students:</strong> Get <strong className="text-amber-300">Flat 40% OFF</strong> with ID + <strong className="text-amber-300">10% Extra</strong> on Google Review!
               </span>
             </div>
 
             {/* Social Proof Stats */}
             <div className="flex items-center gap-6 mt-1">
               {[
-                { v: "8,400+", l: "Happy Clients" },
-                { v: "4.9★", l: "Top Rated" },
-                { v: "15+ Yrs", l: "Experience" },
+                { v: "8,400+", l: "Happy Guests" },
+                { v: "4.9★", l: "Google Rating" },
+                { v: "15+ Yrs", l: "Styling Masters" },
               ].map((s) => (
                 <div key={s.l}>
                   <div className="text-sm sm:text-base font-black text-amber-300">{s.v}</div>
-                  <div className="text-[10px] sm:text-[11px] text-gray-500">{s.l}</div>
+                  <div className="text-[10px] sm:text-[11px] text-gray-400 font-medium">{s.l}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* RIGHT: Service Picker — Responsive, non-scrollable, high-contrast */}
-          <div className="w-full lg:w-[490px] xl:w-[530px] flex flex-col justify-center px-2 sm:px-6 lg:py-2 flex-shrink-0">
+          {/* RIGHT: Service Picker — High-contrast, touch-optimized, animated */}
+          <div className="w-full lg:w-[490px] xl:w-[530px] flex flex-col justify-center px-1 sm:px-6 lg:py-2 flex-shrink-0">
 
-            <div className="mb-1.5 sm:mb-2.5 flex items-center justify-between">
+            <div className="mb-2 sm:mb-2.5 flex items-center justify-between px-1">
               <h2 className="text-xs sm:text-base font-black text-white uppercase tracking-wider flex items-center gap-1.5">
                 <span>✨</span> Choose Service
               </h2>
-              <span className="text-[11px] sm:text-sm font-extrabold text-amber-300 bg-amber-400/15 px-2 py-0.5 rounded-full border border-amber-400/30">
+              <span className="text-[11px] sm:text-sm font-extrabold text-amber-300 bg-amber-400/15 px-2.5 py-0.5 rounded-full border border-amber-400/30">
                 Save ₹200 on Combos
               </span>
             </div>
 
             {/* 4 Curated Combo Cards */}
-            <div id="services-grid" className="flex flex-col gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+            <div id="services-grid" className="flex flex-col gap-2 mb-2">
               {standardServices.map((svc) => {
                 const isSelected = selectedService === svc.name;
                 const discountAmount = svc.discountAmount ?? DISCOUNT;
@@ -410,17 +422,20 @@ export default function Home() {
                     key={svc.id || svc.name}
                     id={`service-${svc.name.replace(/\s+/g, "-").toLowerCase()}`}
                     onClick={() => { setSelectedService(svc.name); setHighlightServices(false); }}
-                    className="flex items-center gap-2.5 sm:gap-3 px-3 py-1.5 sm:py-2.5 rounded-xl sm:rounded-2xl text-left w-full transition-all cursor-pointer"
+                    className={`flex items-center gap-2.5 sm:gap-3 px-3 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-left w-full transition-all cursor-pointer ${
+                      isSelected
+                        ? "scale-[1.012] shadow-[0_0_22px_rgba(201,168,76,0.3)]"
+                        : "hover:bg-white/[0.06] active:scale-[0.985]"
+                    }`}
                     style={{
                       background: isSelected
-                        ? "linear-gradient(135deg, rgba(201,168,76,0.22), rgba(240,208,110,0.12))"
+                        ? "linear-gradient(135deg, rgba(201,168,76,0.24), rgba(240,208,110,0.12))"
                         : "rgba(255,255,255,0.04)",
-                      border: isSelected ? "2px solid #f0d06e" : "1.5px solid rgba(255,255,255,0.1)",
-                      boxShadow: isSelected ? "0 0 16px rgba(201,168,76,0.25)" : "none",
+                      border: isSelected ? "2px solid #f0d06e" : "1.5px solid rgba(255,255,255,0.12)",
                     }}>
                     
                     <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: isSelected ? "rgba(201,168,76,0.3)" : "rgba(255,255,255,0.06)" }}>
+                      style={{ background: isSelected ? "rgba(201,168,76,0.35)" : "rgba(255,255,255,0.06)" }}>
                       <ServiceIcon icon={svc.icon} size={18} color={isSelected ? "#f0d06e" : "#d1d5db"} />
                     </div>
 
@@ -446,12 +461,11 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{
-                        background: isSelected ? "#f0d06e" : "transparent",
-                        border: isSelected ? "none" : "2px solid rgba(255,255,255,0.3)",
-                        color: "#1a1a2e",
-                      }}>
+                    <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
+                      isSelected
+                        ? "bg-[#f0d06e] text-[#1a1a2e] animate-scaleIn shadow-xs"
+                        : "border-2 border-white/30 text-transparent"
+                    }`}>
                       {isSelected && <CheckIcon size={12} />}
                     </div>
                   </button>
@@ -463,7 +477,7 @@ export default function Home() {
             {(() => {
               const isSelected = selectedService === studentOffer.name;
               return (
-                <div className="mb-2 sm:mb-2.5">
+                <div className="mb-2.5">
                   <div className="flex items-center gap-2 mb-1">
                     <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-purple-500/40 to-amber-400/30" />
                     <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/40 flex items-center gap-1">
@@ -475,17 +489,18 @@ export default function Home() {
                   <button
                     id="service-student-special"
                     onClick={() => { setSelectedService(studentOffer.name); setHighlightServices(false); }}
-                    className="w-full text-left p-2.5 sm:p-3 rounded-xl sm:rounded-2xl transition-all relative overflow-hidden cursor-pointer"
+                    className={`w-full text-left p-2.5 sm:p-3 rounded-xl sm:rounded-2xl transition-all relative overflow-hidden cursor-pointer ${
+                      isSelected
+                        ? "scale-[1.012] shadow-[0_0_24px_rgba(168,85,247,0.38)]"
+                        : "hover:bg-white/[0.06] active:scale-[0.985]"
+                    }`}
                     style={{
                       background: isSelected
-                        ? "linear-gradient(135deg, rgba(147,51,234,0.3), rgba(201,168,76,0.22))"
+                        ? "linear-gradient(135deg, rgba(147,51,234,0.32), rgba(201,168,76,0.22))"
                         : "linear-gradient(135deg, rgba(147,51,234,0.12), rgba(201,168,76,0.08))",
                       border: isSelected
                         ? "2px solid #f0d06e"
                         : "1.5px solid rgba(168,85,247,0.45)",
-                      boxShadow: isSelected
-                        ? "0 0 20px rgba(168,85,247,0.35), inset 0 0 12px rgba(240,208,110,0.15)"
-                        : "none",
                     }}>
                     
                     <div className="flex items-center justify-between gap-2">
@@ -499,17 +514,16 @@ export default function Home() {
                             Students Flat 40% + 10% Extra
                           </div>
                           <div className="text-[10px] sm:text-xs text-purple-200 font-semibold leading-tight mt-0.5">
-                            Valid on ALL salon services
+                            Valid on ALL salon services with ID
                           </div>
                         </div>
                       </div>
 
-                      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{
-                          background: isSelected ? "#f0d06e" : "transparent",
-                          border: isSelected ? "none" : "2px solid rgba(255,255,255,0.3)",
-                          color: "#1a1a2e",
-                        }}>
+                      <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
+                        isSelected
+                          ? "bg-[#f0d06e] text-[#1a1a2e] animate-scaleIn shadow-xs"
+                          : "border-2 border-white/30 text-transparent"
+                      }`}>
                         {isSelected && <CheckIcon size={12} />}
                       </div>
                     </div>
@@ -527,31 +541,44 @@ export default function Home() {
               );
             })()}
 
-            {/* SINGLE Prominent CTA Button — Arrow NEVER wraps */}
-            {(() => {
-              const activeSvc = allServices.find(s => s.name === selectedService) || allServices[0];
-              const isStudent = activeSvc.name === studentOffer.name;
-              return (
-                <button
-                  id="claim-offer-btn"
-                  onClick={claimOffer}
-                  className="btn-primary btn-pulse w-full text-xs sm:text-base font-black py-3 sm:py-3.5 rounded-xl shadow-xl flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
-                  style={{ width: "100%" }}>
-                  <span>{isStudent ? "CLAIM 40% + 10% STUDENT OFFER" : `CLAIM ₹${activeSvc.discountAmount ?? 200} OFF`}</span>
-                  <span className="hidden sm:inline font-bold opacity-80">• {selectedService}</span>
-                  <span className="inline-block whitespace-nowrap">&rarr;</span>
-                </button>
-              );
-            })()}
+            {/* DESKTOP CTA Button (Hidden on small screens) */}
+            <div className="hidden sm:block mt-1">
+              <button
+                id="claim-offer-btn"
+                onClick={claimOffer}
+                className="btn-primary btn-pulse w-full text-sm sm:text-base font-black py-3 sm:py-3.5 rounded-xl sm:rounded-2xl shadow-xl flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
+                style={{ width: "100%" }}>
+                <span>{isStudent ? "CLAIM 40% + 10% STUDENT OFFER" : `CLAIM ₹${activeSvc.discountAmount ?? 200} OFF`}</span>
+                <span className="font-bold opacity-85">• {selectedService}</span>
+                <span className="inline-block whitespace-nowrap font-black">&rarr;</span>
+              </button>
 
-            {/* Micro trust indicators */}
-            <div className="flex justify-center items-center gap-2 sm:gap-3 pt-1 sm:pt-1.5 text-[10px] sm:text-xs font-semibold text-gray-400">
-              <span>&#10003; 30-Sec Booking</span>
-              <span>&bull;</span>
-              <span>&#10003; No Payment Now</span>
-              <span>&bull;</span>
-              <span>&#10003; Free Reschedule</span>
+              <div className="flex justify-center items-center gap-2 sm:gap-3 pt-1.5 text-[10px] sm:text-xs font-semibold text-gray-400">
+                <span>&#10003; 30-Sec Booking</span>
+                <span>&bull;</span>
+                <span>&#10003; No Advance Required</span>
+                <span>&bull;</span>
+                <span>&#10003; Free Reschedule</span>
+              </div>
             </div>
+
+          </div>
+        </div>
+
+        {/* MOBILE FIXED STICKY BOTTOM BAR (Floating above Safari and Netlify elements) */}
+        <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#090913]/95 backdrop-blur-xl border-t border-amber-500/25 px-3 pt-2.5 pb-[max(14px,env(safe-area-inset-bottom))] shadow-[0_-12px_35px_rgba(0,0,0,0.85)] animate-fadeInUp">
+          <button
+            id="claim-offer-mobile-btn"
+            onClick={claimOffer}
+            className="btn-primary w-full text-sm font-black py-3.5 rounded-xl shadow-xl flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer"
+          >
+            <span>{isStudent ? "CLAIM 40% + 10% STUDENT OFFER" : `CLAIM ₹${activeSvc.discountAmount ?? 200} OFF`}</span>
+            <span className="inline-block whitespace-nowrap font-black text-base">&rarr;</span>
+          </button>
+          <div className="flex justify-center items-center gap-2 pt-1 text-[10px] font-semibold text-gray-300">
+            <span>⚡ Zero Advance Payment</span>
+            <span>&bull;</span>
+            <span>📲 Instant WhatsApp Voucher</span>
           </div>
         </div>
       </main>
@@ -569,10 +596,17 @@ export default function Home() {
 
     return (
       <main style={{ background: "#0c0c16" }}
-        className="h-[100dvh] max-h-[100dvh] overflow-y-auto lg:overflow-hidden flex items-center justify-center px-3 py-2 sm:px-4 sm:py-4">
+        className="min-h-dvh w-full flex flex-col items-center justify-center px-2.5 py-4 sm:px-4 sm:py-8 relative overflow-x-hidden pb-12 sm:pb-8">
         
+        {/* Background Ambient Glows */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+          <div className="ambient-glow-1 absolute -top-28 -left-28 w-80 h-80 rounded-full bg-amber-500/12 blur-[110px]" />
+          <div className="ambient-glow-2 absolute top-1/3 -right-28 w-88 h-88 rounded-full bg-purple-600/12 blur-[125px]" />
+          <div className="ambient-glow-1 absolute -bottom-24 left-1/3 w-80 h-80 rounded-full bg-amber-400/8 blur-[100px]" />
+        </div>
+
         {/* Luxury Glass Form Card — Responsive max-w-xl */}
-        <div className="w-full max-w-xl rounded-2xl sm:rounded-3xl p-4 sm:p-7 relative"
+        <div className="w-full max-w-full sm:max-w-xl rounded-2xl sm:rounded-3xl p-3.5 sm:p-7 relative z-10 animate-fadeInUp box-border overflow-hidden"
           style={{
             background: "rgba(20, 20, 35, 0.98)",
             border: "1.5px solid rgba(201,168,76,0.35)",
@@ -580,13 +614,13 @@ export default function Home() {
           }}>
           
           {/* Card Top Nav */}
-          <div className="flex items-center justify-between pb-2.5 sm:pb-3.5 mb-2.5 sm:mb-3.5 border-b border-white/10">
+          <div className="flex items-center justify-between pb-2.5 sm:pb-3.5 mb-2.5 sm:mb-3.5 border-b border-white/10 gap-2">
             <button
               onClick={() => setStep("landing")}
-              className="flex items-center gap-1.5 text-xs sm:text-sm font-bold px-3 py-1 sm:py-1.5 rounded-xl text-amber-300 bg-amber-400/15 border border-amber-400/30 hover:bg-amber-400/25 transition-all cursor-pointer whitespace-nowrap">
-              <span>&larr;</span> <span>Back to Services</span>
+              className="flex items-center gap-1.5 text-xs sm:text-sm font-bold px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-amber-300 bg-amber-400/15 border border-amber-400/30 hover:bg-amber-400/25 active:scale-95 transition-all cursor-pointer whitespace-nowrap flex-shrink-0">
+              <span>&larr;</span> <span>Back</span>
             </button>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-shrink-0">
               <img src="/logo.png" alt="Swasthik Logo"
                 className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-amber-400/40" />
               <span className="text-xs sm:text-sm font-black text-amber-300 tracking-wider whitespace-nowrap">
@@ -596,7 +630,7 @@ export default function Home() {
           </div>
 
           {/* Unified Offer & Selected Service Header — Big & Visible */}
-          <div className="rounded-xl sm:rounded-2xl p-3 sm:p-4 mb-2.5 sm:mb-4"
+          <div className="rounded-xl sm:rounded-2xl p-2.5 sm:p-4 mb-2.5 sm:mb-4"
             style={{
               background: svc.isSpecial
                 ? "linear-gradient(135deg, rgba(147,51,234,0.25), rgba(201,168,76,0.15))"
@@ -606,52 +640,52 @@ export default function Home() {
                 : "1.5px solid rgba(201,168,76,0.35)",
             }}>
             
-            <div className="flex items-center justify-between gap-2.5">
-              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{ background: svc.isSpecial ? "rgba(168,85,247,0.35)" : "rgba(201,168,76,0.25)" }}>
-                  <ServiceIcon icon={svc.icon} size={20} color="#f0d06e" />
+                  <ServiceIcon icon={svc.icon} size={18} color="#f0d06e" />
                 </div>
-                <div className="min-w-0">
-                  <div className="text-sm sm:text-lg font-black text-white truncate">
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs sm:text-base font-black text-white truncate">
                     {svc.name}
                   </div>
-                  <div className="text-[11px] sm:text-sm text-gray-200 font-semibold truncate">
+                  <div className="text-[10px] sm:text-xs text-gray-200 font-semibold truncate">
                     {svc.isSpecial ? "Flat 40% (Student ID) + 10% (Review)" : `Regular Price: ₹${svc.price}`}
                   </div>
                 </div>
               </div>
 
               <div className="text-right flex-shrink-0">
-                <div className="text-base sm:text-2xl font-black text-amber-300 whitespace-nowrap">
+                <div className="text-sm sm:text-2xl font-black text-amber-300 whitespace-nowrap">
                   {svc.isSpecial ? "40% + 10% OFF" : `₹${offerPrice}`}
                 </div>
-                <div className="text-[10px] sm:text-sm font-extrabold text-emerald-300 whitespace-nowrap">
+                <div className="text-[10px] sm:text-xs font-extrabold text-emerald-300 whitespace-nowrap">
                   {svc.isSpecial ? "All Services" : badgeText}
                 </div>
               </div>
             </div>
 
             {/* Quick Cross-Offer Switcher Link */}
-            <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between text-xs sm:text-sm font-semibold">
+            <div className="mt-2 pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-1.5 text-xs sm:text-sm font-semibold">
               {!svc.isSpecial ? (
                 <>
-                  <span className="text-purple-200 truncate">🎓 Are you a student?</span>
+                  <span className="text-purple-200">🎓 Are you a student?</span>
                   <button
                     type="button"
                     onClick={() => setSelectedService(studentOffer.name)}
-                    className="font-bold text-amber-300 hover:text-amber-200 underline cursor-pointer whitespace-nowrap ml-2">
-                    Switch to Student Offer&nbsp;&rarr;
+                    className="font-bold text-amber-300 hover:text-amber-200 underline cursor-pointer">
+                    Switch to Student Offer &rarr;
                   </button>
                 </>
               ) : (
                 <>
-                  <span className="text-amber-200 truncate">✨ Regular guest?</span>
+                  <span className="text-amber-200">✨ Regular guest?</span>
                   <button
                     type="button"
                     onClick={() => setSelectedService(standardServices[0]?.name || "Advanced Haircut")}
-                    className="font-bold text-amber-300 hover:text-amber-200 underline cursor-pointer whitespace-nowrap ml-2">
-                    Switch to ₹200 OFF Combos&nbsp;&rarr;
+                    className="font-bold text-amber-300 hover:text-amber-200 underline cursor-pointer">
+                    Switch to ₹200 OFF Combos &rarr;
                   </button>
                 </>
               )}
@@ -678,11 +712,11 @@ export default function Home() {
 
             {/* WhatsApp Mobile Number */}
             <div>
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1">
                 <label className="text-xs sm:text-sm font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
                   <span>WhatsApp Mobile Number *</span>
                 </label>
-                <span className="text-[10px] sm:text-xs font-bold text-emerald-300 bg-emerald-950/70 border border-emerald-500/40 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <span className="text-[10px] sm:text-xs font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse" />
                   WhatsApp Active
                 </span>
@@ -690,7 +724,7 @@ export default function Home() {
               <input
                 id="input-phone"
                 type="tel"
-                placeholder="10-digit WhatsApp number (e.g. 9876543210)"
+                placeholder="10-digit WhatsApp number"
                 maxLength={10}
                 value={formData.phone}
                 onChange={(e) => {
@@ -733,17 +767,19 @@ export default function Home() {
                 }}
                 className={`form-input text-sm sm:text-base font-bold tracking-wider py-2.5 sm:py-3.5 px-3 sm:px-4 rounded-xl ${errors.phone ? "error" : ""}`}
               />
-              <p className="text-[10px] sm:text-xs text-emerald-400 mt-1 flex items-center gap-1 font-semibold">
-                <span>📲</span> Voucher &amp; booking details will be sent directly to this WhatsApp number.
+              <p className="text-[10px] sm:text-xs text-emerald-400 mt-1 font-semibold leading-normal">
+                📲 Voucher &amp; booking details will be sent directly to this WhatsApp number.
               </p>
               {errors.phone && <p className="text-[11px] sm:text-xs font-bold text-red-400 mt-0.5">{errors.phone}</p>}
             </div>
 
-            {/* Date & Time Grid — Optional */}
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            {/* Date & Time Grid — Fully responsive, zero border overlap on iOS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
               <div className="min-w-0">
-                <label className="block text-xs sm:text-sm font-bold uppercase tracking-wider text-gray-300 mb-1 truncate">
-                  Visit Date <span className="text-gray-400 font-normal normal-case">(Optional)</span>
+                <label className="block text-xs sm:text-sm font-black uppercase tracking-wider text-amber-300/90 mb-1 flex items-center gap-1.5">
+                  <span>📅</span>
+                  <span>Visit Date</span>
+                  <span className="text-gray-400 font-normal normal-case text-[11px]">(Optional)</span>
                 </label>
                 <input
                   id="input-date"
@@ -752,22 +788,24 @@ export default function Home() {
                   suppressHydrationWarning
                   value={formData.preferredDate}
                   onChange={(e) => { setFormData({ ...formData, preferredDate: e.target.value }); setErrors({ ...errors, preferredDate: "" }); }}
-                  className="form-input text-xs sm:text-base font-semibold py-2 sm:py-3 px-2 sm:px-3 rounded-xl w-full min-w-0"
+                  className="form-input text-sm sm:text-base font-semibold w-full"
                 />
               </div>
 
               <div className="min-w-0">
-                <label className="block text-xs sm:text-sm font-bold uppercase tracking-wider text-gray-300 mb-1 truncate">
-                  Time Slot <span className="text-gray-400 font-normal normal-case">(Optional)</span>
+                <label className="block text-xs sm:text-sm font-black uppercase tracking-wider text-amber-300/90 mb-1 flex items-center gap-1.5">
+                  <span>⏰</span>
+                  <span>Time Slot</span>
+                  <span className="text-gray-400 font-normal normal-case text-[11px]">(Optional)</span>
                 </label>
                 <select
                   id="input-time"
                   value={formData.preferredTime}
                   onChange={(e) => { setFormData({ ...formData, preferredTime: e.target.value }); setErrors({ ...errors, preferredTime: "" }); }}
-                  className="form-input text-xs sm:text-base font-semibold py-2 sm:py-3 px-2 sm:px-3 rounded-xl w-full min-w-0">
-                  <option value="" style={{ background: "#1a1a2e", color: "#ffffff" }}>Flexible / Any Time</option>
+                  className="form-input text-sm sm:text-base font-semibold w-full">
+                  <option value="" style={{ background: "#141423", color: "#ffffff" }}>Flexible / Any Time</option>
                   {TIME_SLOTS.map((t) => (
-                    <option key={t} value={t} style={{ background: "#1a1a2e", color: "#ffffff" }}>{t}</option>
+                    <option key={t} value={t} style={{ background: "#141423", color: "#ffffff" }}>{t}</option>
                   ))}
                 </select>
               </div>
@@ -775,7 +813,7 @@ export default function Home() {
 
             {/* Error Message Banner */}
             {submitError && (
-              <div id="submit-error-banner" className="p-2.5 sm:p-3 rounded-xl text-xs sm:text-sm font-bold text-center bg-red-500/20 border border-red-500/50 text-red-200 mt-0.5">
+              <div id="submit-error-banner" className="p-2.5 sm:p-3 rounded-xl text-xs sm:text-sm font-bold text-center bg-red-500/20 border border-red-500/50 text-red-200 mt-0.5 animate-fadeInUp">
                 ⚠️ {submitError}
               </div>
             )}
@@ -786,24 +824,27 @@ export default function Home() {
                 id="submit-form-btn"
                 type="submit"
                 disabled={isSubmitting}
-                className="btn-primary w-full text-sm sm:text-base font-black py-3 sm:py-4 rounded-xl sm:rounded-2xl shadow-xl flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
+                className="btn-primary w-full text-xs sm:text-base font-black py-3.5 sm:py-4 rounded-xl sm:rounded-2xl shadow-xl flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-98"
                 style={{ width: "100%" }}>
                 {isSubmitting ? (
-                  "Locking Your Offer..."
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin inline-block" />
+                    <span>Locking Your Offer...</span>
+                  </span>
                 ) : svc.isSpecial ? (
                   <span className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                     <span>Confirm &amp; Lock Student Offer</span>
-                    <span className="inline-block whitespace-nowrap">&rarr;</span>
+                    <span className="inline-block whitespace-nowrap font-black">&rarr;</span>
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                     <span>Confirm &amp; Lock ₹{discountAmount} OFF</span>
-                    <span className="inline-block whitespace-nowrap">&rarr;</span>
+                    <span className="inline-block whitespace-nowrap font-black">&rarr;</span>
                   </span>
                 )}
               </button>
-              <p className="text-center text-[10px] sm:text-xs text-gray-300 font-semibold mt-1">
-                &#10003; Instant confirmation &bull; Zero advance payment required
+              <p className="text-center text-[10px] sm:text-xs text-gray-300 font-semibold mt-1.5">
+                &#10003; Instant WhatsApp voucher &bull; Zero advance payment required
               </p>
             </div>
           </form>
@@ -825,9 +866,17 @@ export default function Home() {
     const lockedInMessage = isStudentOffer ? "Your 40% + 10% Student Offer is locked in." : `Your ₹${submittedLead.discountAmount || 200} OFF First Visit Offer is locked in.`;
 
     return (
-      <main style={{ background: "#0f0f1a" }}
-        className="h-[100dvh] max-h-[100dvh] overflow-y-auto lg:overflow-hidden flex flex-col items-center justify-center px-4 py-4">
-        <div className="w-full max-w-lg">
+      <main style={{ background: "#0c0c16" }}
+        className="min-h-dvh flex flex-col items-center justify-center px-3 py-6 relative overflow-x-hidden pb-16 sm:pb-8">
+        
+        {/* Background Ambient Glows */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+          <div className="ambient-glow-1 absolute -top-28 -left-28 w-80 h-80 rounded-full bg-emerald-500/12 blur-[110px]" />
+          <div className="ambient-glow-2 absolute top-1/3 -right-28 w-88 h-88 rounded-full bg-amber-500/12 blur-[125px]" />
+          <div className="ambient-glow-1 absolute -bottom-24 left-1/3 w-80 h-80 rounded-full bg-emerald-400/8 blur-[100px]" />
+        </div>
+
+        <div className="w-full max-w-lg relative z-10 animate-scaleIn">
           
           {/* Instant Confirmation Header */}
           <div className="text-center mb-3 sm:mb-4">
