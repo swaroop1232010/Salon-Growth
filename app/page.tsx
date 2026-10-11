@@ -238,6 +238,8 @@ export default function Home() {
           name: formData.name.trim(),
           service: selectedService || activeSvc.name,
           referenceId: lead.id,
+          discountAmount,
+          offerPrice,
           voucherText: voucherMsg,
         }),
       }).catch((e) => console.warn("Background voucher notify warning:", e));
@@ -938,28 +940,24 @@ export default function Home() {
                 Show your Student ID for <strong>Flat 40% OFF</strong>, plus leave a quick Google review at your visit to unlock the <strong>extra 10% OFF</strong>!
               </span>
             ) : (
-              <span>We have saved your voucher for WhatsApp number <strong>+91 {submittedLead.phone}</strong>!</span>
+              <span>Tap below to confirm your appointment and voucher directly with our salon team on WhatsApp!</span>
             )}
           </div>
 
           {/* WhatsApp Voucher Button */}
           <a
             id="whatsapp-voucher-btn"
-            href={`https://wa.me/91${submittedLead.phone}?text=${encodeURIComponent(
+            href={`https://wa.me/919110365226?text=${encodeURIComponent(
               `✨ *SWASTHIK SALON & BOUTIQUE* ✨\n` +
-              `🎉 *YOUR EXCLUSIVE OFFER VOUCHER* 🎉\n\n` +
-              `Dear *${submittedLead.name}*,\n` +
-              `Congratulations! Your offer voucher has been confirmed & locked in.\n\n` +
+              `🎉 *APPOINTMENT & VOUCHER CONFIRMATION* 🎉\n\n` +
+              `Hi Swasthik Salon, I just claimed my offer on your website!\n\n` +
               `🔖 *Booking Reference:* ${submittedLead.id}\n` +
+              `👤 *Name:* ${submittedLead.name}\n` +
+              `📱 *Phone:* ${submittedLead.phone}\n` +
               `💇 *Service:* ${submittedLead.service}\n` +
-              `💰 *Offer:* ${offerLabel}\n` +
+              `💰 *Offer Claimed:* ${offerLabel}\n` +
               `📅 *Date & Time:* ${submittedLead.preferredDate && submittedLead.preferredDate !== "-" ? `${formatDateSafe(submittedLead.preferredDate)}${submittedLead.preferredTime ? ` at ${submittedLead.preferredTime}` : ""}` : "Flexible (To be confirmed)"}\n\n` +
-              `📍 *Salon Location:*\n` +
-              `Swasthik Salon & Boutique, CXHF+82V, Ravindra Nagar, Nellore, Andhra Pradesh 524003\n\n` +
-              `🗺️ *Tap to Open Google Maps & Navigate:*\n` +
-              `https://maps.google.com/?q=CXHF%2B82V,+Ravindra+Nagar,+Nellore,+Andhra+Pradesh+524003\n\n` +
-              `✅ *Zero Advance:* Pay at the salon counter after your service.\n\n` +
-              `Please show this message at the reception during your visit. See you soon! ✨`
+              `Please confirm my appointment slot. Thank you! ✨`
             )}`}
             target="_blank"
             rel="noopener noreferrer"
@@ -970,7 +968,7 @@ export default function Home() {
             }}
           >
             <span>📲</span>
-            <span>Receive / Open Voucher on WhatsApp</span>
+            <span>Send to Salon on WhatsApp</span>
             <span>&rarr;</span>
           </a>
 
