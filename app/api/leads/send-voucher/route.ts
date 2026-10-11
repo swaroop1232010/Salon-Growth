@@ -11,10 +11,40 @@ export async function POST(request: Request) {
     }
 
     const recipient = `91${cleanPhone}`;
+    let ultraResult: Record<string, unknown> | null = null;
+    let ultraError: string | null = null;
     let cloudApiResult: Record<string, unknown> | null = null;
     let cloudApiError: string | null = null;
 
-    // ─── 1. Official Meta WhatsApp Cloud API ────────────────────────────────────
+    // ─── 1. UltraMsg WhatsApp Gateway (Direct QR-Linked Business Phone) ────────
+    const ultraInstance = process.env.ULTRAMSG_INSTANCE_ID;
+    const ultraToken = process.env.ULTRAMSG_TOKEN;
+
+    if (ultraInstance && ultraToken) {
+      try {
+        const ultraRes = await fetch(`https://api.ultramsg.com/${ultraInstance}/messages/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            token: ultraToken,
+            to: `+91${cleanPhone}`,
+            body: voucherText || "",
+          }),
+        });
+        ultraResult = (await ultraRes.json()) as Record<string, unknown>;
+        if (!ultraRes.ok || ultraResult?.error) {
+          ultraError = (ultraResult?.error as string) || "Failed sending via UltraMsg";
+          console.warn("UltraMsg dispatch notice:", ultraResult);
+        } else {
+          console.log("UltraMsg WhatsApp sent successfully:", ultraResult);
+        }
+      } catch (err: unknown) {
+        ultraError = err instanceof Error ? err.message : "Network error calling UltraMsg";
+        console.warn("UltraMsg dispatch exception:", err);
+      }
+    }
+
+    // ─── 2. Official Meta WhatsApp Cloud API (Fallback if configured) ───────────
     // Phone Number ID & Access Token configured in .env.local
     const phoneNumberId =
       process.env.WHATSAPP_CLOUD_API_PHONE_NUMBER_ID ||
@@ -111,6 +141,10 @@ export async function POST(request: Request) {
       success: true,
       phone: cleanPhone,
       recipient,
+      ultraConfigured: Boolean(ultraInstance && ultraToken),
+      ultraSent: Boolean(ultraResult && !ultraError),
+      ultraResult,
+      ultraError,
       cloudApiConfigured: Boolean(phoneNumberId && accessToken),
       cloudApiSent: Boolean(cloudApiResult && !cloudApiError),
       cloudApiResult,
